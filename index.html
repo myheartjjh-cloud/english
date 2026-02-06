@@ -49,11 +49,11 @@
     .bulk-actions { display: flex; gap: 8px; margin-bottom: 15px; }
     .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
     .flash-fav-pos { position: absolute; top: 15px; right: 20px; z-index: 5; }
-    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; }
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-align: center; padding: 20px; }
   </style>
 </head>
 <body>
-  <div id="loading-overlay">데이터를 불러오는 중...</div>
+  <div id="loading-overlay">데이터를 불러오는 중입니다...<br>잠시만 기다려주세요.</div>
 
   <div class="app">
     <header class="appbar">📚 맞춤형 영어학습</header>
@@ -65,7 +65,7 @@
             <div class="dashboard-6">
               <div class="stat-item"><div class="stat-label">⭐ 즐겨찾기</div><div class="stat-value" id="dash-fav-count">0</div></div>
               <div class="stat-item"><div class="stat-label">🏁 전체단어</div><div class="stat-value" id="dash-total">0</div></div>
-              <div class="stat-item"><div class="stat-label">🔥 암기율</div><div class="stat-value" id="dash-progress">0%</div></div>
+              <div class="stat-item"><div class="stat-label">🔥 학습률</div><div class="stat-value" id="dash-progress">0%</div></div>
             </div>
             <button class="btn primary" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
             <button class="btn" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
@@ -91,7 +91,7 @@
             </div>
             <div class="display-word" id="w-meaning-display"></div>
             <div id="w-result-msg" class="result-msg"></div>
-            <input type="text" id="w-input" placeholder="영단어 입력" autocomplete="off">
+            <input type="text" id="w-input" placeholder="영단어 입력" autocomplete="off" autocapitalize="off">
             <button class="btn primary" onclick="checkWrite()">정답 확인</button>
             <button class="btn" onclick="switchView('home')">학습 종료</button>
           </div>
@@ -118,12 +118,7 @@
                 <span class="fav-star">★</span>
               </label>
             </div>
-            <div class="dashboard-6">
-              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="f-cur">0</div></div>
-              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
-              <div class="stat-item"><div class="stat-label">📊 진도</div><div class="stat-value" id="f-pct">0%</div></div>
-            </div>
-            <div id="flash-display" onclick="flip()" style="min-height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:var(--radius); border:1px solid var(--border); cursor:pointer;">
+            <div id="flash-display" onclick="flip()" style="min-height:250px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:var(--radius); border:1px solid var(--border); cursor:pointer; text-align:center; padding:20px;">
               <div id="f-content"></div>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
@@ -150,30 +145,34 @@
   </div>
 
   <script>
-    // ⚠️ [필독] 본인의 구글 앱스크립트 배포 주소를 아래에 넣으세요
+    // ⚠️ [중요] 구글 앱스크립트 배포 URL을 아래 따옴표 안에 넣으세요.
     const API_URL = "https://script.google.com/macros/s/AKfycbyyfHj5WeHh05JR9Rob90m1lfeQ3k7a0QIed8mR3rfBoKJGFQVAekLay8Kp3BdMS-w/exec";
 
     let appData = { words: [] };
     let filteredWords = [];
     let curIdx = 0;
     let flipped = false;
-    let quizStats = { right: 0, wrong: 0 };
+    let quizStats = { right: 0 };
 
-    // 초기 데이터 로딩
     async function init() {
       try {
-        const response = await fetch(API_URL);
+        // 리다이렉트 대응을 위한 fetch 설정
+        const response = await fetch(API_URL, { method: "GET", redirect: "follow" });
+        if (!response.ok) throw new Error("네트워크 응답 에러");
+        
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         
-        const days = [...new Set(appData.words.map(w => w.day))].sort();
-        const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기만</option>' + 
+        // 날짜 옵션 생성
+        const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
+        const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + 
                      days.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('ready-day-select').innerHTML = html;
         document.getElementById('list-day-select').innerHTML = html;
         updateHomeStats();
       } catch (e) {
-        document.getElementById('loading-overlay').textContent = "데이터 로드 실패. URL을 확인하세요.";
+        console.error(e);
+        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.<br>배포 주소와 권한 설정을 확인하세요.";
       }
     }
 
@@ -190,8 +189,8 @@
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
       if(id === 'words') renderWordList();
       if(id === 'home') updateHomeStats();
-      const tab = document.getElementById('tab-' + (id === 'ready' || id === 'flash' || id === 'write' || id === 'quiz' ? 'home' : id));
-      if(tab) tab.setAttribute('aria-selected', 'true');
+      const tabId = (id === 'ready' || id === 'flash' || id === 'write' || id === 'quiz') ? 'home' : id;
+      document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
     function toggleFav(id, checked) {
@@ -230,33 +229,32 @@
       document.getElementById('start-btn').onclick = () => {
         const filter = document.getElementById('ready-day-select').value;
         filteredWords = (filter === 'all') ? [...appData.words] : (filter === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == filter);
-        if(!filteredWords.length) return alert("단어가 없습니다.");
+        if(!filteredWords.length) return alert("학습할 단어가 없습니다.");
         filteredWords.sort(() => Math.random() - 0.5);
-        curIdx = 0; quizStats = { right: 0, wrong: 0 };
+        curIdx = 0; quizStats.right = 0;
         if(type === 'flash') startFlash();
         else if(type === 'write') startWrite();
         else startQuiz();
       };
     }
 
-    function startFlash() { switchView('flash'); updateFlash(); }
+    function startFlash() { switchView('flash'); flipped = false; updateFlash(); }
     function updateFlash() {
       const w = filteredWords[curIdx];
       document.getElementById('f-fav-check').checked = w.favorite;
-      document.getElementById('f-content').innerHTML = flipped ? `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:20px; margin-top:15px; border-top:1px solid var(--border); padding-top:15px; width:100%;">${w.meaning}</div>` : `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:10px; color:var(--muted);">터치하여 뜻 보기</div>`;
-      document.getElementById('f-cur').textContent = curIdx + 1;
-      document.getElementById('f-total').textContent = filteredWords.length;
-      document.getElementById('f-pct').textContent = Math.round(((curIdx+1)/filteredWords.length)*100) + "%";
+      document.getElementById('f-content').innerHTML = flipped ? 
+        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:20px; margin-top:15px; border-top:1px solid var(--border); padding-top:15px; width:100%;">${w.meaning}</div>` : 
+        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:10px; color:var(--muted);">터치하여 뜻 보기</div>`;
       if(!flipped) speak(w.word);
     }
     function flip() { flipped = !flipped; updateFlash(); }
-    function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("학습 완료!"); switchView('home'); } }
+    function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("모든 단어를 확인했습니다!"); switchView('home'); } }
 
     function startWrite() { switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
       document.getElementById('w-meaning-display').textContent = w.meaning;
-      document.getElementById('w-result-msg').innerHTML = `<span style="color:var(--muted)">영단어를 입력하세요</span>`;
+      document.getElementById('w-result-msg').innerHTML = `<span style="color:var(--muted)">정답을 입력하세요</span>`;
       document.getElementById('w-input').value = ''; document.getElementById('w-input').focus();
       document.getElementById('w-cur').textContent = curIdx+1;
       document.getElementById('w-total').textContent = filteredWords.length;

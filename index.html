@@ -145,7 +145,7 @@
   </div>
 
   <script>
-    // ⚠️ [중요] 구글 앱스크립트 배포 URL을 아래 따옴표 안에 넣으세요.
+    // 배포 URL 적용
     const API_URL = "https://script.google.com/macros/s/AKfycbyF9phDAUNsa_-wjt4E4SyvDM71DTkqA-CPMFQhInZ4YvdvEylgsgC_IEy4k0dSn14/exec";
 
     let appData = { words: [] };
@@ -156,19 +156,19 @@
 
     async function init() {
       try {
-        // 리다이렉트 대응을 위한 fetch 설정
-        const response = await fetch(API_URL, { method: "GET", redirect: "follow" });
+        const response = await fetch(API_URL);
         if (!response.ok) throw new Error("네트워크 응답 에러");
         
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         
-        // 날짜 옵션 생성
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
         const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + 
                      days.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('ready-day-select').innerHTML = html;
         document.getElementById('list-day-select').innerHTML = html;
+        
+        // 데이터 로드 후 초기 통계 업데이트
         updateHomeStats();
       } catch (e) {
         console.error(e);
@@ -177,25 +177,34 @@
     }
 
     function updateHomeStats() {
+      if (!appData.words) return;
+      const total = appData.words.length;
       const favs = appData.words.filter(w => w.favorite).length;
+      
       document.getElementById('dash-fav-count').textContent = favs;
-      document.getElementById('dash-total').textContent = appData.words.length;
-      document.getElementById('dash-progress').textContent = Math.round((favs/appData.words.length)*100 || 0) + "%";
+      document.getElementById('dash-total').textContent = total;
+      const progress = total > 0 ? Math.round((favs / total) * 100) : 0;
+      document.getElementById('dash-progress').textContent = progress + "%";
     }
 
     function switchView(id) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + id).classList.add('active');
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+      
       if(id === 'words') renderWordList();
       if(id === 'home') updateHomeStats();
+      
       const tabId = (id === 'ready' || id === 'flash' || id === 'write' || id === 'quiz') ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
     function toggleFav(id, checked) {
       const word = appData.words.find(w => w.id == id);
-      if(word) word.favorite = checked;
+      if(word) {
+        word.favorite = checked;
+        updateHomeStats(); // 즐겨찾기 변경 시 즉시 통계 반영
+      }
     }
 
     function toggleFlashFav(checked) {
@@ -222,6 +231,7 @@
       let targets = (day === 'all') ? appData.words : appData.words.filter(w => w.day == day);
       targets.forEach(w => w.favorite = status);
       renderWordList();
+      updateHomeStats();
     }
 
     function prepareStudy(type) {
@@ -301,10 +311,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-

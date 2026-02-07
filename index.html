@@ -393,17 +393,20 @@
             const isDayMatch = selectedDays.includes(String(w.day));
             return isFavMatch || isDayMatch;
         });
-      }
-      updateHomeStats();
-      document.getElementById('word-list-container').innerHTML = list.map(w => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
-            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning} (Day ${w.day})</div></div>
-          </div>
-          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
-        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
-    }
+}
+  updateHomeStats();
+  document.getElementById('word-list-container').innerHTML = list.map(w => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
+        <div>
+          <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
+          <div style="font-size:14px; opacity:0.7;">${w.meaning} (${w.day})</div> 
+        </div>
+      </div>
+      <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
+    </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
+}
 
     function bulkFavorite(status) {
       let listToUpdate = selectedDays.includes('all') ? appData.words : appData.words.filter(w => selectedDays.includes('fav') && w.favorite || selectedDays.includes(String(w.day)));
@@ -423,3 +426,4 @@
   </script>
 </body>
 </html>
+

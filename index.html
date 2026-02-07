@@ -35,13 +35,14 @@
     .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
+    
+    /* 하단 메뉴 수정: 2개 메뉴 공간 조정 */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
-    .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 11px; }
-    .tab[aria-selected="true"] { color: var(--primary2); }
+    .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
+    
     .view { display: none; } .view.active { display: block; }
-
-    /* 즐겨찾기 스타일 */
     .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
     .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
     .hidden-check { display: none; }
@@ -112,6 +113,11 @@
 
         <section class="view" id="view-flash">
           <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="f-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
+            </div>
             <div class="flash-fav-pos">
               <label class="fav-star-container">
                 <input type="checkbox" id="f-fav-check" class="hidden-check" onchange="toggleFlashFav(this.checked)">
@@ -145,7 +151,6 @@
   </div>
 
   <script>
-    // 배포 URL 적용
     const API_URL = "https://script.google.com/macros/s/AKfycbyF9phDAUNsa_-wjt4E4SyvDM71DTkqA-CPMFQhInZ4YvdvEylgsgC_IEy4k0dSn14/exec";
 
     let appData = { words: [] };
@@ -158,17 +163,12 @@
       try {
         const response = await fetch(API_URL);
         if (!response.ok) throw new Error("네트워크 응답 에러");
-        
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
-        
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
-        const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + 
-                     days.map(d => `<option value="${d}">${d}</option>`).join('');
+        const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('ready-day-select').innerHTML = html;
         document.getElementById('list-day-select').innerHTML = html;
-        
-        // 데이터 로드 후 초기 통계 업데이트
         updateHomeStats();
       } catch (e) {
         console.error(e);
@@ -180,7 +180,6 @@
       if (!appData.words) return;
       const total = appData.words.length;
       const favs = appData.words.filter(w => w.favorite).length;
-      
       document.getElementById('dash-fav-count').textContent = favs;
       document.getElementById('dash-total').textContent = total;
       const progress = total > 0 ? Math.round((favs / total) * 100) : 0;
@@ -191,20 +190,15 @@
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + id).classList.add('active');
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
-      
       if(id === 'words') renderWordList();
       if(id === 'home') updateHomeStats();
-      
       const tabId = (id === 'ready' || id === 'flash' || id === 'write' || id === 'quiz') ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
     function toggleFav(id, checked) {
       const word = appData.words.find(w => w.id == id);
-      if(word) {
-        word.favorite = checked;
-        updateHomeStats(); // 즐겨찾기 변경 시 즉시 통계 반영
-      }
+      if(word) { word.favorite = checked; updateHomeStats(); }
     }
 
     function toggleFlashFav(checked) {
@@ -230,8 +224,7 @@
       const day = document.getElementById('list-day-select').value;
       let targets = (day === 'all') ? appData.words : appData.words.filter(w => w.day == day);
       targets.forEach(w => w.favorite = status);
-      renderWordList();
-      updateHomeStats();
+      renderWordList(); updateHomeStats();
     }
 
     function prepareStudy(type) {
@@ -252,6 +245,9 @@
     function updateFlash() {
       const w = filteredWords[curIdx];
       document.getElementById('f-fav-check').checked = w.favorite;
+      document.getElementById('f-cur').textContent = curIdx + 1;
+      document.getElementById('f-total').textContent = filteredWords.length;
+      document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
       document.getElementById('f-content').innerHTML = flipped ? 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:20px; margin-top:15px; border-top:1px solid var(--border); padding-top:15px; width:100%;">${w.meaning}</div>` : 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:10px; color:var(--muted);">터치하여 뜻 보기</div>`;
@@ -276,9 +272,7 @@
       if(val === target.word.toLowerCase()) {
         quizStats.right++; speak(target.word);
         if(curIdx < filteredWords.length - 1) { curIdx++; updateWrite(); } else { alert("학습 완료!"); switchView('home'); }
-      } else {
-        document.getElementById('w-result-msg').innerHTML = `❌ 오답 (정답: <b style="color:#ff4d4f">${target.word}</b>)`;
-      }
+      } else { document.getElementById('w-result-msg').innerHTML = `❌ 오답 (정답: <b style="color:#ff4d4f">${target.word}</b>)`; }
     }
 
     function startQuiz() { switchView('quiz'); updateQuiz(); }
@@ -311,4 +305,3 @@
   </script>
 </body>
 </html>
-

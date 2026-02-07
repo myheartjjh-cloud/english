@@ -30,13 +30,8 @@
     .btn:active { opacity: 0.7; } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
     select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; }
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
-    .result-msg { text-align: center; font-weight: 700; min-height: 45px; margin-bottom: 10px; line-height: 1.4; font-size: 15px; }
-    .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-    .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
-    .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
-    .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
     
-    /* 하단 메뉴 수정: 2개 메뉴 공간 조정 */
+    /* 하단바 메뉴 2개 최적화 */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -47,10 +42,16 @@
     .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
     .hidden-check { display: none; }
     .hidden-check:checked + .fav-star { color: #ffcc00; }
-    .bulk-actions { display: flex; gap: 8px; margin-bottom: 15px; }
-    .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
-    .flash-fav-pos { position: absolute; top: 15px; right: 20px; z-index: 5; }
+    
+    /* 플래시카드 내부 별표 스타일 */
+    .flash-word-row { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+    
     #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-align: center; padding: 20px; }
+    .result-msg { text-align: center; font-weight: 700; min-height: 45px; margin-bottom: 10px; line-height: 1.4; font-size: 15px; }
+    .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
+    .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
+    .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -118,14 +119,8 @@
               <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
               <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
             </div>
-            <div class="flash-fav-pos">
-              <label class="fav-star-container">
-                <input type="checkbox" id="f-fav-check" class="hidden-check" onchange="toggleFlashFav(this.checked)">
-                <span class="fav-star">★</span>
-              </label>
-            </div>
-            <div id="flash-display" onclick="flip()" style="min-height:250px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:var(--radius); border:1px solid var(--border); cursor:pointer; text-align:center; padding:20px;">
-              <div id="f-content"></div>
+            <div id="flash-display" onclick="flip()" style="min-height:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:var(--radius); border:1px solid var(--border); cursor:pointer; text-align:center; padding:20px;">
+              <div id="f-content" style="width: 100%;"></div>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
               <button class="btn primary" onclick="nextCard()">다음 단어</button>
@@ -147,7 +142,12 @@
         </section>
       </div>
     </main>
-    <nav class="tabbar"><div class="tabbar-inner"><button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button><button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button></div></nav>
+    <nav class="tabbar">
+      <div class="tabbar-inner">
+        <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
+        <button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button>
+      </div>
+    </nav>
   </div>
 
   <script>
@@ -198,12 +198,11 @@
 
     function toggleFav(id, checked) {
       const word = appData.words.find(w => w.id == id);
-      if(word) { word.favorite = checked; updateHomeStats(); }
-    }
-
-    function toggleFlashFav(checked) {
-      const currentWord = filteredWords[curIdx];
-      if(currentWord) toggleFav(currentWord.id, checked);
+      if(word) { 
+        word.favorite = checked; 
+        updateHomeStats(); 
+        if(document.getElementById('view-flash').classList.contains('active')) updateFlash();
+      }
     }
 
     function renderWordList() {
@@ -242,17 +241,31 @@
     }
 
     function startFlash() { switchView('flash'); flipped = false; updateFlash(); }
+    
     function updateFlash() {
       const w = filteredWords[curIdx];
-      document.getElementById('f-fav-check').checked = w.favorite;
+      const progress = Math.round(((curIdx + 1) / filteredWords.length) * 100);
+      
       document.getElementById('f-cur').textContent = curIdx + 1;
       document.getElementById('f-total').textContent = filteredWords.length;
-      document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
-      document.getElementById('f-content').innerHTML = flipped ? 
-        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:20px; margin-top:15px; border-top:1px solid var(--border); padding-top:15px; width:100%;">${w.meaning}</div>` : 
-        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:10px; color:var(--muted);">터치하여 뜻 보기</div>`;
+      document.getElementById('f-progress').textContent = progress + "%";
+
+      const starHtml = `
+        <label class="fav-star-container" onclick="event.stopPropagation();">
+          <input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)">
+          <span class="fav-star" style="font-size: 36px;">★</span>
+        </label>`;
+
+      const content = flipped ? 
+        `<div class="flash-word-row"><div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>${starHtml}</div>
+         <div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin-left:auto; margin-right:auto;">${w.meaning}</div>` : 
+        `<div class="flash-word-row"><div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>${starHtml}</div>
+         <div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
+      
+      document.getElementById('f-content').innerHTML = content;
       if(!flipped) speak(w.word);
     }
+
     function flip() { flipped = !flipped; updateFlash(); }
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("모든 단어를 확인했습니다!"); switchView('home'); } }
 

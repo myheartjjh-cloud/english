@@ -23,21 +23,17 @@
     .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
     
-    /* Stats Dashboard */
     .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
     .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
     .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
     .stat-value { font-size: 15px; font-weight: 800; color: var(--primary2); }
     
-    /* Buttons */
     .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: all 0.2s; }
     .btn:active { opacity: 0.7; transform: scale(0.98); } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
-    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
     select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; transition: all 0.2s; }
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
-    /* Tabbar */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -48,14 +44,12 @@
     .hidden-check { display: none; }
     .hidden-check:checked + .fav-star { color: #ffcc00; }
 
-    /* Quiz/Flashcards */
     #flash-display { position: relative; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer; text-align: center; padding: 20px; }
     .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
     .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
     
-    /* Multi-select Dropdown */
     .ms-container { position: relative; width: 100%; margin-bottom: 15px; }
     .ms-header { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-size: 18px; text-align: center; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .ms-header::after { content: '▼'; font-size: 12px; opacity: 0.5; }
@@ -182,7 +176,7 @@
     let quizStats = { right: 0 };
     let selectedDays = ['all'];
     let currentQuestionAttempted = false; 
-    let isProcessing = false; // 중복 실행 방지용 잠금 변수
+    let isProcessing = false; 
 
     async function init() {
       try {
@@ -241,6 +235,9 @@
       if(id === 'home') updateHomeStats();
       const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
+      
+      // 뷰 이동 시 안전하게 상태 초기화
+      isProcessing = false;
     }
 
     function speak(t) {
@@ -250,8 +247,8 @@
       window.speechSynthesis.speak(u);
     }
 
-    // --- 주관식 학습 로직 (수정됨) ---
-    function startWrite() { switchView('write'); currentQuestionAttempted = false; updateWrite(); }
+    // --- 핵심 수정: 주관식 로직 개선 ---
+    function startWrite() { switchView('write'); currentQuestionAttempted = false; isProcessing = false; updateWrite(); }
     
     function updateWrite() {
       const w = filteredWords[curIdx];
@@ -262,7 +259,7 @@
       input.value = '';
       input.style.borderColor = "var(--border)";
       input.style.backgroundColor = "var(--surface2)";
-      input.disabled = false; // 입력창 활성화
+      input.disabled = false;
       input.focus();
 
       document.getElementById('w-meaning-display').textContent = w.meaning;
@@ -272,35 +269,38 @@
     }
 
     function checkWrite() {
-      if (isProcessing) return; // 이미 처리 중이면 함수 실행 막음
+      if (isProcessing) return; 
 
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
+      
+      // [중요] 데이터의 앞뒤 공백을 제거하여 비교 (.trim())
       const userAns = input.value.trim().toLowerCase();
-      const originAns = filteredWords[curIdx].word.toLowerCase();
+      const originAns = filteredWords[curIdx].word.trim().toLowerCase();
 
       if (!userAns) return;
 
       if (userAns === originAns) {
-        // [정답 로직]
-        isProcessing = true; // 처리 시작 잠금
+        // [정답]
+        isProcessing = true; // 처리 중 잠금
         
         if (!currentQuestionAttempted) {
-          // 처음부터 맞힌 경우
           msg.innerHTML = `<b style="color:#22c55e;">정답입니다! 👏</b>`;
           quizStats.right++;
         } else {
-          // 틀린 후 다시 쓴 경우
-          msg.innerHTML = `<b style="color:#2dd4ff;">잘하셨어요! 다음으로 넘어갑니다. 👍</b>`;
+          msg.innerHTML = `<b style="color:#2dd4ff;">맞았습니다! 다음으로 넘어갑니다. 👍</b>`;
         }
         
         input.style.borderColor = "#22c55e";
         input.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
         speak(filteredWords[curIdx].word);
 
-        // 다음 문제로 이동 (0.8초 딜레이)
         setTimeout(() => {
           isProcessing = false; // 잠금 해제
+          
+          // 사용자가 화면을 나갔는지 체크 (오류 방지)
+          if(!document.getElementById('view-write').classList.contains('active')) return;
+
           if (curIdx < filteredWords.length - 1) { 
             curIdx++; 
             currentQuestionAttempted = false; 
@@ -311,9 +311,10 @@
         }, 800);
 
       } else {
-        // [오답 로직]
+        // [오답]
         currentQuestionAttempted = true;
-        msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:20px;">${filteredWords[curIdx].word}</b>`;
+        // 정답을 보여줄 때도 공백 제거된 깔끔한 단어 표시
+        msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:24px;">${filteredWords[curIdx].word.trim()}</b>`;
         input.style.borderColor = "#ff4d4f";
         input.style.backgroundColor = "rgba(255, 77, 79, 0.05)";
         input.value = ''; 
@@ -336,7 +337,7 @@
       };
     }
 
-    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; updateQuiz(); }
+    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; isProcessing = false; updateQuiz(); }
     function updateQuiz() {
       const t = filteredWords[curIdx];
       document.getElementById('q-word').textContent = t.word;
@@ -355,6 +356,7 @@
         if(!currentQuestionAttempted) quizStats.right++;
         setTimeout(() => { 
           isProcessing = false;
+          if(!document.getElementById('view-quiz').classList.contains('active')) return;
           if(curIdx < filteredWords.length - 1) { curIdx++; currentQuestionAttempted = false; updateQuiz(); } else { finishStudy(); } 
         }, 800);
       } else { currentQuestionAttempted = true; btn.classList.add('wrong'); }

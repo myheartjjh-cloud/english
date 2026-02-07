@@ -53,7 +53,7 @@
     #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-align: center; padding: 20px; }
     .result-msg { text-align: center; font-weight: 700; min-height: 45px; margin-bottom: 10px; line-height: 1.4; font-size: 15px; }
     .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-    .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
+    .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
     .bulk-actions { display: flex; gap: 8px; margin-bottom: 15px; }
@@ -61,7 +61,6 @@
     
     .count-badge { font-size: 14px; background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
 
-    /* 다중 선택 드롭다운 커스텀 스타일 */
     .ms-container { position: relative; width: 100%; margin-bottom: 15px; }
     .ms-header { 
       width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); 
@@ -149,7 +148,7 @@
             <div class="display-word" id="w-meaning-display"></div>
             <div id="w-result-msg" class="result-msg"></div>
             <input type="text" id="w-input" placeholder="영단어 입력" autocomplete="off" autocapitalize="off">
-            <button class="btn primary" onclick="checkWrite()">정답 확인</button>
+            <button id="w-check-btn" class="btn primary" onclick="checkWrite()">정답 확인</button>
             <button class="btn" onclick="switchView('home')">학습 종료</button>
           </div>
         </section>
@@ -172,13 +171,10 @@
             <div style="font-size:20px; font-weight:900; margin-bottom:12px;">
                 📖 내 단어장 <span id="list-fav-count" class="count-badge">0</span>
             </div>
-            
             <div class="ms-container">
               <div class="ms-header" id="ms-header" onclick="toggleMsList()">범위: 전체</div>
-              <div class="ms-list" id="ms-list">
-                </div>
+              <div class="ms-list" id="ms-list"></div>
             </div>
-
             <div class="bulk-actions">
                 <button class="btn btn-small" onclick="bulkFavorite(true)">✨ 모두 선택</button>
                 <button class="btn btn-small" onclick="bulkFavorite(false)">❌ 모두 해제</button>
@@ -205,7 +201,8 @@
     let curIdx = 0;
     let flipped = false;
     let quizStats = { right: 0 };
-    let selectedDays = ['all']; // 다중 선택된 Day 관리
+    let selectedDays = ['all'];
+    let hasAnsweredCurrent = false; // 사지선다: 첫 번째 시도 체크용
 
     async function init() {
       try {
@@ -214,23 +211,13 @@
         document.getElementById('loading-overlay').style.display = 'none';
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
         
-        // 1. 학습 준비 뷰 드롭다운 (단일 선택)
         const readyHtml = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('ready-day-select').innerHTML = readyHtml;
 
-        // 2. 단어장 다중 선택 리스트 생성
         const msList = document.getElementById('ms-list');
-        let msHtml = `
-          <div class="ms-item" onclick="handleMsClick(event, 'all')">
-            <input type="checkbox" value="all" id="cb-all" checked> <label>전체보기</label>
-          </div>
-          <div class="ms-item" onclick="handleMsClick(event, 'fav')">
-            <input type="checkbox" value="fav" id="cb-fav"> <label>⭐ 즐겨찾기</label>
-          </div>`;
-        msHtml += days.map(d => `
-          <div class="ms-item" onclick="handleMsClick(event, '${d}')">
-            <input type="checkbox" value="${d}" id="cb-${d}"> <label>${d}</label>
-          </div>`).join('');
+        let msHtml = `<div class="ms-item" onclick="handleMsClick(event, 'all')"><input type="checkbox" value="all" id="cb-all" checked> <label>전체보기</label></div>
+                      <div class="ms-item" onclick="handleMsClick(event, 'fav')"><input type="checkbox" value="fav" id="cb-fav"> <label>⭐ 즐겨찾기</label></div>`;
+        msHtml += days.map(d => `<div class="ms-item" onclick="handleMsClick(event, '${d}')"><input type="checkbox" value="${d}" id="cb-${d}"> <label>${d}</label></div>`).join('');
         msList.innerHTML = msHtml;
 
         updateHomeStats();
@@ -240,48 +227,26 @@
       }
     }
 
-    // 드롭다운 열기/닫기
-    function toggleMsList() {
-      document.getElementById('ms-list').classList.toggle('show');
-    }
+    function toggleMsList() { document.getElementById('ms-list').classList.toggle('show'); }
+    window.onclick = function(event) { if (!event.target.closest('.ms-container')) document.getElementById('ms-list').classList.remove('show'); }
 
-    // 외부 클릭 시 드롭다운 닫기
-    window.onclick = function(event) {
-      if (!event.target.closest('.ms-container')) {
-        document.getElementById('ms-list').classList.remove('show');
-      }
-    }
-
-    // 드롭다운 아이템 클릭 핸들러
     function handleMsClick(e, val) {
       e.stopPropagation();
       const cb = document.getElementById(`cb-${val}`);
-      
-      // 체크박스 자체를 누른 게 아니라면 상태 반전
       if (e.target.tagName !== 'INPUT') cb.checked = !cb.checked;
-
       if (val === 'all') {
         if (cb.checked) {
           selectedDays = ['all'];
           document.querySelectorAll('.ms-list input').forEach(i => { if(i.id !== 'cb-all') i.checked = false; });
-        } else {
-          cb.checked = true; // 하나는 무조건 선택
-        }
+        } else { cb.checked = true; }
       } else {
         document.getElementById('cb-all').checked = false;
         const checkedBoxes = Array.from(document.querySelectorAll('.ms-list input:checked')).map(i => i.value);
         selectedDays = checkedBoxes;
-        if (selectedDays.length === 0) {
-          document.getElementById('cb-all').checked = true;
-          selectedDays = ['all'];
-        }
+        if (selectedDays.length === 0) { document.getElementById('cb-all').checked = true; selectedDays = ['all']; }
       }
-      
-      // 헤더 텍스트 업데이트
       const header = document.getElementById('ms-header');
-      if (selectedDays.includes('all')) header.textContent = "범위: 전체";
-      else header.textContent = `범위: ${selectedDays.length}개 선택됨`;
-
+      header.textContent = selectedDays.includes('all') ? "범위: 전체" : `범위: ${selectedDays.length}개 선택됨`;
       renderWordList();
     }
 
@@ -316,6 +281,7 @@
       if(word) toggleFav(word.id, checked);
     }
 
+    /* 플래시카드 로직 */
     function startFlash() { switchView('flash'); curIdx = 0; flipped = false; updateFlash(); }
     function updateFlash() {
       const w = filteredWords[curIdx];
@@ -331,7 +297,6 @@
          <div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
       if(!flipped) speak(w.word);
     }
-
     function flip() { flipped = !flipped; updateFlash(); }
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("모든 단어를 학습했습니다!"); switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
@@ -349,24 +314,52 @@
       };
     }
 
+    /* 주관식 로직: 정답 시 자동 넘어가기 추가 */
     function startWrite() { switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
       document.getElementById('w-meaning-display').textContent = w.meaning;
-      document.getElementById('w-input').value = ''; document.getElementById('w-input').focus();
+      document.getElementById('w-input').value = '';
+      document.getElementById('w-input').disabled = false;
+      document.getElementById('w-input').focus();
+      document.getElementById('w-result-msg').innerHTML = '';
       document.getElementById('w-cur').textContent = curIdx+1;
       document.getElementById('w-total').textContent = filteredWords.length;
       document.getElementById('w-right').textContent = quizStats.right;
+      document.getElementById('w-check-btn').disabled = false;
     }
     function checkWrite() {
-      if(document.getElementById('w-input').value.trim().toLowerCase() === filteredWords[curIdx].word.toLowerCase()) {
-        quizStats.right++; speak(filteredWords[curIdx].word);
-        if(curIdx < filteredWords.length - 1) { curIdx++; updateWrite(); } else { alert("완료!"); switchView('home'); }
-      } else { document.getElementById('w-result-msg').innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b>`; }
+      const input = document.getElementById('w-input').value.trim().toLowerCase();
+      const answer = filteredWords[curIdx].word.toLowerCase();
+      const msgArea = document.getElementById('w-result-msg');
+      
+      if(input === answer) {
+        quizStats.right++;
+        msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b>`;
+        speak(filteredWords[curIdx].word);
+      } else {
+        msgArea.innerHTML = `❌ 오답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b>`;
+      }
+
+      // 입력창과 버튼 잠금 후 자동으로 다음으로 넘기기
+      document.getElementById('w-input').disabled = true;
+      document.getElementById('w-check-btn').disabled = true;
+
+      setTimeout(() => {
+        if(curIdx < filteredWords.length - 1) {
+          curIdx++;
+          updateWrite();
+        } else {
+          alert("학습이 완료되었습니다!");
+          switchView('home');
+        }
+      }, 1500);
     }
 
+    /* 사지선다 로직: 첫 시도에만 점수 반영 */
     function startQuiz() { switchView('quiz'); updateQuiz(); }
     function updateQuiz() {
+      hasAnsweredCurrent = false; // 새 문제 시작 시 답변 상태 초기화
       const t = filteredWords[curIdx];
       document.getElementById('q-word').textContent = t.word;
       let opts = [t.meaning, ...appData.words.filter(w=>w.meaning!==t.meaning).sort(()=>Math.random()-0.5).slice(0,3).map(w=>w.meaning)].sort(()=>Math.random()-0.5);
@@ -377,36 +370,55 @@
       speak(t.word);
     }
     function checkQuiz(o, btn) {
-      if(o === filteredWords[curIdx].meaning) {
-        btn.classList.add('correct'); quizStats.right++;
-        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { alert("완료!"); switchView('home'); } }, 800);
-      } else { btn.classList.add('wrong'); }
+      const isCorrect = (o === filteredWords[curIdx].meaning);
+      
+      if(isCorrect) {
+        btn.classList.add('correct');
+        // 첫 번째 시도에 맞춘 경우에만 점수 증가
+        if (!hasAnsweredCurrent) {
+          quizStats.right++;
+          document.getElementById('q-right').textContent = quizStats.right;
+        }
+        // 정답을 맞추면 모든 옵션 클릭 방지
+        document.querySelectorAll('.quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
+        
+        setTimeout(() => { 
+          if(curIdx < filteredWords.length - 1) { 
+            curIdx++; updateQuiz(); 
+          } else { 
+            alert("완료!"); switchView('home'); 
+          } 
+        }, 1000);
+      } else {
+        btn.classList.add('wrong');
+        hasAnsweredCurrent = true; // 틀린 답을 한 번이라도 누르면 '이미 답함' 상태가 됨
+      }
     }
 
+    /* 단어장 렌더링: (Day DAY60) 방지 */
     function renderWordList() {
       let list = [];
-      if (selectedDays.includes('all')) {
-        list = appData.words;
-      } else {
+      if (selectedDays.includes('all')) { list = appData.words; } 
+      else {
         list = appData.words.filter(w => {
             const isFavMatch = selectedDays.includes('fav') && w.favorite;
             const isDayMatch = selectedDays.includes(String(w.day));
             return isFavMatch || isDayMatch;
         });
-}
-  updateHomeStats();
-  document.getElementById('word-list-container').innerHTML = list.map(w => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
-        <div>
-          <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
-          <div style="font-size:14px; opacity:0.7;">${w.meaning} (${w.day})</div> 
-        </div>
-      </div>
-      <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
-    </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
-}
+      }
+      updateHomeStats();
+      document.getElementById('word-list-container').innerHTML = list.map(w => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
+            <div>
+              <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
+              <div style="font-size:14px; opacity:0.7;">${w.meaning} (${w.day})</div>
+            </div>
+          </div>
+          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
+        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
+    }
 
     function bulkFavorite(status) {
       let listToUpdate = selectedDays.includes('all') ? appData.words : appData.words.filter(w => selectedDays.includes('fav') && w.favorite || selectedDays.includes(String(w.day)));
@@ -426,4 +438,3 @@
   </script>
 </body>
 </html>
-

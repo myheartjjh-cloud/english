@@ -60,6 +60,12 @@
     .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
     
     .count-badge { font-size: 14px; background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+
+    /* 다중 선택 스타일 추가 */
+    .multi-select-container { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+    .day-chip { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); padding: 6px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .day-chip input { display: none; }
+    .day-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
   </style>
 </head>
 <body>
@@ -152,7 +158,9 @@
             <div style="font-size:20px; font-weight:900; margin-bottom:12px;">
                 📖 내 단어장 <span id="list-fav-count" class="count-badge">0</span>
             </div>
-            <select id="list-day-select" onchange="renderWordList()"></select>
+            
+            <div id="multi-select-box" class="multi-select-container"></div>
+            
             <div class="bulk-actions">
                 <button class="btn btn-small" onclick="bulkFavorite(true)">✨ 모두 선택</button>
                 <button class="btn btn-small" onclick="bulkFavorite(false)">❌ 모두 해제</button>
@@ -179,6 +187,7 @@
     let curIdx = 0;
     let flipped = false;
     let quizStats = { right: 0 };
+    let selectedDays = ['all']; // 다중 선택된 Day들을 관리
 
     async function init() {
       try {
@@ -186,14 +195,67 @@
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
-        const html = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
-        document.getElementById('ready-day-select').innerHTML = html;
-        document.getElementById('list-day-select').innerHTML = html;
+        
+        // 1. 학습 시작 페이지 드롭다운 (단일 선택 유지)
+        const readyHtml = '<option value="all">전체보기</option><option value="fav">⭐ 즐겨찾기</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
+        document.getElementById('ready-day-select').innerHTML = readyHtml;
+
+        // 2. 단어장 다중 선택 칩 생성
+        const multiSelectBox = document.getElementById('multi-select-box');
+        let multiHtml = `<label class="day-chip active" id="chip-all"><input type="checkbox" value="all" onchange="handleDayChange(this)" checked>전체</label>`;
+        multiHtml += `<label class="day-chip" id="chip-fav"><input type="checkbox" value="fav" onchange="handleDayChange(this)">⭐ 즐겨찾기</label>`;
+        multiHtml += days.map(d => `<label class="day-chip" id="chip-${d}"><input type="checkbox" value="${d}" onchange="handleDayChange(this)">${d}</label>`).join('');
+        multiSelectBox.innerHTML = multiHtml;
+
         updateHomeStats();
       } catch (e) {
         console.error(e);
         document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.";
       }
+    }
+
+    // 다중 선택 핸들러
+    function handleDayChange(cb) {
+      const val = cb.value;
+      const isChecked = cb.checked;
+      const chip = document.getElementById(`chip-${val}`);
+
+      if (val === 'all') {
+        if (isChecked) {
+          selectedDays = ['all'];
+          // 다른 모든 체크 해제
+          document.querySelectorAll('.day-chip input').forEach(input => {
+            if(input.value !== 'all') {
+                input.checked = false;
+                input.parentElement.classList.remove('active');
+            }
+          });
+        } else {
+          cb.checked = true; // 최소 하나는 선택되어야 함
+        }
+      } else {
+        // all 해제
+        const allCb = document.querySelector('#chip-all input');
+        allCb.checked = false;
+        allCb.parentElement.classList.remove('active');
+        
+        if (isChecked) {
+            if(selectedDays.includes('all')) selectedDays = [];
+            selectedDays.push(val);
+        } else {
+            selectedDays = selectedDays.filter(d => d !== val);
+            if (selectedDays.length === 0) {
+                allCb.checked = true;
+                allCb.parentElement.classList.add('active');
+                selectedDays = ['all'];
+            }
+        }
+      }
+      
+      if (isChecked) chip.classList.add('active');
+      else chip.classList.remove('active');
+
+      renderWordList();
     }
 
     function updateHomeStats() {
@@ -204,7 +266,6 @@
       document.getElementById('dash-total').textContent = total;
       document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
       
-      // 단어장 뱃지도 전체 개수를 기준으로 업데이트
       const badge = document.getElementById('list-fav-count');
       if(badge) badge.textContent = favs;
     }
@@ -223,7 +284,7 @@
       const word = appData.words.find(w => w.id == id);
       if(word) { 
         word.favorite = checked; 
-        updateHomeStats(); // 홈 스탯과 단어장 뱃지를 동시에 업데이트
+        updateHomeStats();
       }
     }
 
@@ -300,25 +361,41 @@
     }
 
     function renderWordList() {
-      const day = document.getElementById('list-day-select').value;
-      let list = (day === 'all') ? appData.words : (day === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == day);
+      let list = [];
+      if (selectedDays.includes('all')) {
+        list = appData.words;
+      } else {
+        list = appData.words.filter(w => {
+            const isFavMatch = selectedDays.includes('fav') && w.favorite;
+            const isDayMatch = selectedDays.includes(String(w.day));
+            return isFavMatch || isDayMatch;
+        });
+      }
       
-      // 화면 전환 시 배지도 최신 상태 반영
       updateHomeStats();
 
       document.getElementById('word-list-container').innerHTML = list.map(w => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
           <div style="display:flex; align-items:center; gap:12px;">
             <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
-            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning}</div></div>
+            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning} (Day ${w.day})</div></div>
           </div>
           <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
         </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
     }
 
     function bulkFavorite(status) {
-      const day = document.getElementById('list-day-select').value;
-      (day === 'all' ? appData.words : appData.words.filter(w => w.day == day)).forEach(w => w.favorite = status);
+      let listToUpdate = [];
+      if (selectedDays.includes('all')) {
+        listToUpdate = appData.words;
+      } else {
+        listToUpdate = appData.words.filter(w => {
+            const isFavMatch = selectedDays.includes('fav') && w.favorite;
+            const isDayMatch = selectedDays.includes(String(w.day));
+            return isFavMatch || isDayMatch;
+        });
+      }
+      listToUpdate.forEach(w => w.favorite = status);
       renderWordList(); 
       updateHomeStats();
     }

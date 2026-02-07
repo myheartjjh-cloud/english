@@ -22,45 +22,75 @@
     .content { flex: 1; padding: 20px 16px calc(var(--tabbar-h) + 20px); display: flex; justify-content: center; }
     .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
+    
+    /* 대시보드 통계 */
     .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
     .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
     .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
     .stat-value { font-size: 15px; font-weight: 800; color: var(--primary2); }
+    
     .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: opacity 0.2s; }
     .btn:active { opacity: 0.7; } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
+    
     select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; }
+    
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
-    /* 하단바 메뉴 2개 최적화 */
+    /* 하단바 2칸 최적화 */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
     
     .view { display: none; } .view.active { display: block; }
+    
+    /* 즐겨찾기 별표 공통 */
     .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
     .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
     .hidden-check { display: none; }
     .hidden-check:checked + .fav-star { color: #ffcc00; }
-    
-    /* 플래시카드 내부 별표 스타일 */
-    .flash-word-row { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
-    
+
+    /* 플래시카드 박스 내부 고정 별표 */
+    #flash-display { 
+      position: relative; 
+      min-height: 280px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      background: var(--surface2); 
+      border-radius: var(--radius); 
+      border: 1px solid var(--border); 
+      cursor: pointer; 
+      text-align: center; 
+      padding: 20px; 
+    }
+    .flash-fav-pos { 
+      position: absolute; 
+      top: 12px; 
+      right: 12px; 
+      z-index: 10; 
+    }
+
     #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-align: center; padding: 20px; }
     .result-msg { text-align: center; font-weight: 700; min-height: 45px; margin-bottom: 10px; line-height: 1.4; font-size: 15px; }
     .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
     .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
+    
+    .bulk-actions { display: flex; gap: 8px; margin-bottom: 15px; }
+    .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
   </style>
 </head>
 <body>
-  <div id="loading-overlay">데이터를 불러오는 중입니다...<br>잠시만 기다려주세요.</div>
+  <div id="loading-overlay">데이터를 불러오는 중입니다...</div>
 
   <div class="app">
     <header class="appbar">📚 맞춤형 영어학습</header>
     <main class="content">
       <div class="container">
+        
         <section class="view active" id="view-home">
           <div class="card">
             <div style="font-size:20px; font-weight:900; margin-bottom:12px;">학습 메뉴</div>
@@ -81,6 +111,31 @@
             <select id="ready-day-select"></select>
             <button id="start-btn" class="btn primary">학습 시작하기</button>
             <button class="btn" onclick="switchView('home')">취소</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-flash">
+          <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="f-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
+            </div>
+            
+            <div id="flash-display" onclick="flip()">
+              <div class="flash-fav-pos" onclick="event.stopPropagation();">
+                <label class="fav-star-container">
+                  <input type="checkbox" id="f-fav-check" class="hidden-check" onchange="toggleFlashFav(this.checked)">
+                  <span class="fav-star">★</span>
+                </label>
+              </div>
+              <div id="f-content" style="width: 100%;"></div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <button class="btn primary" onclick="nextCard()">다음 단어</button>
+              <button class="btn" onclick="switchView('home')">종료</button>
+            </div>
           </div>
         </section>
 
@@ -112,23 +167,6 @@
           </div>
         </section>
 
-        <section class="view" id="view-flash">
-          <div class="card">
-            <div class="dashboard-6">
-              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="f-cur">0</div></div>
-              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
-              <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
-            </div>
-            <div id="flash-display" onclick="flip()" style="min-height:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--surface2); border-radius:var(--radius); border:1px solid var(--border); cursor:pointer; text-align:center; padding:20px;">
-              <div id="f-content" style="width: 100%;"></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <button class="btn primary" onclick="nextCard()">다음 단어</button>
-              <button class="btn" onclick="switchView('home')">종료</button>
-            </div>
-          </div>
-        </section>
-
         <section class="view" id="view-words">
           <div class="card">
             <div style="font-size:20px; font-weight:900; margin-bottom:12px;">📖 내 단어장</div>
@@ -140,6 +178,7 @@
             <div id="word-list-container"></div>
           </div>
         </section>
+
       </div>
     </main>
     <nav class="tabbar">
@@ -162,7 +201,6 @@
     async function init() {
       try {
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error("네트워크 응답 에러");
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
@@ -172,7 +210,7 @@
         updateHomeStats();
       } catch (e) {
         console.error(e);
-        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.<br>배포 주소와 권한 설정을 확인하세요.";
+        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.";
       }
     }
 
@@ -182,8 +220,7 @@
       const favs = appData.words.filter(w => w.favorite).length;
       document.getElementById('dash-fav-count').textContent = favs;
       document.getElementById('dash-total').textContent = total;
-      const progress = total > 0 ? Math.round((favs / total) * 100) : 0;
-      document.getElementById('dash-progress').textContent = progress + "%";
+      document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
     }
 
     function switchView(id) {
@@ -192,46 +229,45 @@
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
       if(id === 'words') renderWordList();
       if(id === 'home') updateHomeStats();
-      const tabId = (id === 'ready' || id === 'flash' || id === 'write' || id === 'quiz') ? 'home' : id;
+      const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
     function toggleFav(id, checked) {
       const word = appData.words.find(w => w.id == id);
-      if(word) { 
-        word.favorite = checked; 
-        updateHomeStats(); 
-        if(document.getElementById('view-flash').classList.contains('active')) updateFlash();
-      }
+      if(word) { word.favorite = checked; updateHomeStats(); }
     }
 
-    function renderWordList() {
-      const day = document.getElementById('list-day-select').value;
-      let list = (day === 'all') ? appData.words : (day === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == day);
-      const container = document.getElementById('word-list-container');
-      container.innerHTML = list.map(w => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
-            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning}</div></div>
-          </div>
-          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
-        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">단어가 없습니다.</div>';
+    function toggleFlashFav(checked) {
+      const word = filteredWords[curIdx];
+      if(word) toggleFav(word.id, checked);
     }
 
-    function bulkFavorite(status) {
-      const day = document.getElementById('list-day-select').value;
-      let targets = (day === 'all') ? appData.words : appData.words.filter(w => w.day == day);
-      targets.forEach(w => w.favorite = status);
-      renderWordList(); updateHomeStats();
+    function startFlash() { switchView('flash'); flipped = false; updateFlash(); }
+    function updateFlash() {
+      const w = filteredWords[curIdx];
+      document.getElementById('f-cur').textContent = curIdx + 1;
+      document.getElementById('f-total').textContent = filteredWords.length;
+      document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
+      document.getElementById('f-fav-check').checked = w.favorite;
+      
+      document.getElementById('f-content').innerHTML = flipped ? 
+        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>
+         <div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin: 20px auto 0;">${w.meaning}</div>` : 
+        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>
+         <div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
+      if(!flipped) speak(w.word);
     }
+
+    function flip() { flipped = !flipped; updateFlash(); }
+    function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("끝났습니다!"); switchView('home'); } }
 
     function prepareStudy(type) {
       switchView('ready');
       document.getElementById('start-btn').onclick = () => {
         const filter = document.getElementById('ready-day-select').value;
         filteredWords = (filter === 'all') ? [...appData.words] : (filter === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == filter);
-        if(!filteredWords.length) return alert("학습할 단어가 없습니다.");
+        if(!filteredWords.length) return alert("단어가 없습니다.");
         filteredWords.sort(() => Math.random() - 0.5);
         curIdx = 0; quizStats.right = 0;
         if(type === 'flash') startFlash();
@@ -240,52 +276,20 @@
       };
     }
 
-    function startFlash() { switchView('flash'); flipped = false; updateFlash(); }
-    
-    function updateFlash() {
-      const w = filteredWords[curIdx];
-      const progress = Math.round(((curIdx + 1) / filteredWords.length) * 100);
-      
-      document.getElementById('f-cur').textContent = curIdx + 1;
-      document.getElementById('f-total').textContent = filteredWords.length;
-      document.getElementById('f-progress').textContent = progress + "%";
-
-      const starHtml = `
-        <label class="fav-star-container" onclick="event.stopPropagation();">
-          <input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)">
-          <span class="fav-star" style="font-size: 36px;">★</span>
-        </label>`;
-
-      const content = flipped ? 
-        `<div class="flash-word-row"><div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>${starHtml}</div>
-         <div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin-left:auto; margin-right:auto;">${w.meaning}</div>` : 
-        `<div class="flash-word-row"><div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>${starHtml}</div>
-         <div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
-      
-      document.getElementById('f-content').innerHTML = content;
-      if(!flipped) speak(w.word);
-    }
-
-    function flip() { flipped = !flipped; updateFlash(); }
-    function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("모든 단어를 확인했습니다!"); switchView('home'); } }
-
     function startWrite() { switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
       document.getElementById('w-meaning-display').textContent = w.meaning;
-      document.getElementById('w-result-msg').innerHTML = `<span style="color:var(--muted)">정답을 입력하세요</span>`;
       document.getElementById('w-input').value = ''; document.getElementById('w-input').focus();
       document.getElementById('w-cur').textContent = curIdx+1;
       document.getElementById('w-total').textContent = filteredWords.length;
       document.getElementById('w-right').textContent = quizStats.right;
     }
     function checkWrite() {
-      const val = document.getElementById('w-input').value.trim().toLowerCase();
-      const target = filteredWords[curIdx];
-      if(val === target.word.toLowerCase()) {
-        quizStats.right++; speak(target.word);
-        if(curIdx < filteredWords.length - 1) { curIdx++; updateWrite(); } else { alert("학습 완료!"); switchView('home'); }
-      } else { document.getElementById('w-result-msg').innerHTML = `❌ 오답 (정답: <b style="color:#ff4d4f">${target.word}</b>)`; }
+      if(document.getElementById('w-input').value.trim().toLowerCase() === filteredWords[curIdx].word.toLowerCase()) {
+        quizStats.right++; speak(filteredWords[curIdx].word);
+        if(curIdx < filteredWords.length - 1) { curIdx++; updateWrite(); } else { alert("완료!"); switchView('home'); }
+      } else { document.getElementById('w-result-msg').innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b>`; }
     }
 
     function startQuiz() { switchView('quiz'); updateQuiz(); }
@@ -302,8 +306,27 @@
     function checkQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct'); quizStats.right++;
-        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { alert("학습 완료!"); switchView('home'); } }, 800);
+        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { alert("완료!"); switchView('home'); } }, 800);
       } else { btn.classList.add('wrong'); }
+    }
+
+    function renderWordList() {
+      const day = document.getElementById('list-day-select').value;
+      let list = (day === 'all') ? appData.words : (day === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == day);
+      document.getElementById('word-list-container').innerHTML = list.map(w => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
+            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning}</div></div>
+          </div>
+          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
+        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">없음</div>';
+    }
+
+    function bulkFavorite(status) {
+      const day = document.getElementById('list-day-select').value;
+      (day === 'all' ? appData.words : appData.words.filter(w => w.day == day)).forEach(w => w.favorite = status);
+      renderWordList(); updateHomeStats();
     }
 
     function speak(t) {

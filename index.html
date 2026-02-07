@@ -130,7 +130,14 @@
             <div class="display-word" id="w-meaning-display"></div>
             <div id="w-result-msg" class="result-msg"></div>
             <input type="text" id="w-input" placeholder="영단어 입력" autocomplete="off" autocapitalize="off">
+            
             <button id="w-check-btn" class="btn primary" onclick="checkWrite()">정답 확인</button>
+            
+            <div class="flash-btn-grid" style="margin-top:0; margin-bottom:12px;">
+              <button class="btn" onclick="prevWrite()">이전 단어</button>
+              <button class="btn" onclick="nextWrite()">다음 단어</button>
+            </div>
+
             <button class="btn" onclick="switchView('home')">학습 종료</button>
           </div>
         </section>
@@ -150,7 +157,7 @@
 
         <section class="view" id="view-words">
           <div class="card">
-            <div style="font-size:20px; font-weight:900; margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size:20px; font-weight:900; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
               <span>📖 내 단어장</span>
               <span id="word-fav-badge" style="font-size:14px; background:var(--surface2); padding:4px 10px; border-radius:10px; color:#ffcc00;">⭐ 0</span>
             </div>
@@ -199,7 +206,6 @@
 
         const msList = document.getElementById('ms-list');
         let msHtml = `<div class="ms-item" onclick="handleMsClick(event, 'all')"><input type="checkbox" value="all" id="cb-all" checked> <label>전체보기</label></div>`;
-        // [복구 1] 단어장 필터 내 즐겨찾기 추가
         msHtml += `<div class="ms-item" onclick="handleMsClick(event, 'fav')"><input type="checkbox" value="fav" id="cb-fav"> <label>⭐ 즐겨찾기</label></div>`;
         msHtml += days.map(d => `<div class="ms-item" onclick="handleMsClick(event, '${d}')"><input type="checkbox" value="${d}" id="cb-${d}"> <label>${d}</label></div>`).join('');
         msList.innerHTML = msHtml;
@@ -238,7 +244,6 @@
       document.getElementById('dash-fav-count').textContent = favs;
       document.getElementById('dash-total').textContent = total;
       document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
-      // [복구 2] 단어장 제목 옆 즐겨찾기 숫자 업데이트
       const badge = document.getElementById('word-fav-badge');
       if(badge) badge.textContent = `⭐ ${favs}`;
     }
@@ -257,7 +262,6 @@
       if(word) {
         word.favorite = checked;
         updateHomeStats();
-        // 즐겨찾기 필터 활성 시 실시간 제거를 위해 렌더링 호출
         if(selectedDays.includes('fav')) renderWordList();
       }
     }
@@ -284,7 +288,7 @@
       };
     }
 
-    /* 주관식 로직 - 보존 */
+    /* 주관식 로직 */
     function startWrite() { isWrongState = false; switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
@@ -299,6 +303,16 @@
       document.getElementById('w-check-btn').textContent = "정답 확인";
     }
 
+    function prevWrite() {
+      if (curIdx > 0) { curIdx--; isWrongState = false; updateWrite(); }
+      else { alert("첫 번째 단어입니다."); }
+    }
+
+    function nextWrite() {
+      if (curIdx < filteredWords.length - 1) { curIdx++; isWrongState = false; updateWrite(); }
+      else { alert("마지막 단어입니다."); }
+    }
+
     function checkWrite() {
       const input = document.getElementById('w-input').value.trim().toLowerCase();
       const answer = filteredWords[curIdx].word.toLowerCase();
@@ -306,7 +320,7 @@
       const btn = document.getElementById('w-check-btn');
 
       if (msgArea.innerHTML.includes('정답입니다') || msgArea.innerHTML.includes('확인되었습니다')) {
-        moveToNextWrite();
+        nextWrite();
         return;
       }
 
@@ -324,11 +338,6 @@
         document.getElementById('w-input').focus();
         btn.textContent = "정답 확인";
       }
-    }
-
-    function moveToNextWrite() {
-      if(curIdx < filteredWords.length - 1) { curIdx++; isWrongState = false; updateWrite(); }
-      else { alert("학습이 완료되었습니다!"); switchView('home'); }
     }
 
     /* 사지선다 로직 */
@@ -369,7 +378,6 @@
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
     function renderWordList() {
-      // 필터 로직: '전체'면 전체, 아니면 체크된 day 및 fav(즐겨찾기) 포함
       let list = [];
       if (selectedDays.includes('all')) {
         list = appData.words;

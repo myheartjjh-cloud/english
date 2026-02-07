@@ -1,4 +1,172 @@
-<script>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b5fff" />
+  <title>맞춤형 영어학습</title>
+  <style>
+    :root {
+      --bg: #0b1020; --surface: #111a33; --surface2: #1f2945;
+      --text: #eaf0ff; --muted: #a9b4d6; --border: rgba(255,255,255,.12);
+      --primary: #0b5fff; --primary2: #2dd4ff; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 20px; --radius2: 16px; --appbar-h: 60px; --tabbar-h: 72px; --maxw: 600px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root { --bg: #f6f8ff; --surface: #ffffff; --surface2: #f1f5ff; --text: #0b1020; --muted: #475569; --border: rgba(2,6,23,.12); }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; touch-action: manipulation; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .appbar { height: var(--appbar-h); position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+    .content { flex: 1; padding: 20px 16px calc(var(--tabbar-h) + 20px); display: flex; justify-content: center; }
+    .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
+    
+    .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+    .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
+    .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
+    .stat-value { font-size: 15px; font-weight: 800; color: var(--primary2); }
+    
+    .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: all 0.2s; }
+    .btn:active { opacity: 0.7; transform: scale(0.98); } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
+    
+    select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; transition: all 0.2s; }
+    .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
+    
+    .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+    .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
+    .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
+    
+    .view { display: none; } .view.active { display: block; }
+    .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
+    .hidden-check { display: none; }
+    .hidden-check:checked + .fav-star { color: #ffcc00; }
+
+    #flash-display { position: relative; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer; text-align: center; padding: 20px; }
+    .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
+    .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
+    
+    .ms-container { position: relative; width: 100%; margin-bottom: 15px; }
+    .ms-header { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-size: 18px; text-align: center; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .ms-header::after { content: '▼'; font-size: 12px; opacity: 0.5; }
+    .ms-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-top: 5px; max-height: 250px; overflow-y: auto; z-index: 200; box-shadow: var(--shadow); }
+    .ms-list.show { display: block; }
+    .ms-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    
+    #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; }
+    .result-msg { text-align: center; font-weight: 700; min-height: 40px; margin-bottom: 10px; line-height: 1.4; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="loading-overlay">데이터를 불러오는 중입니다...</div>
+
+  <div class="app">
+    <header class="appbar">📚 맞춤형 영어학습</header>
+    <main class="content">
+      <div class="container">
+        
+        <section class="view active" id="view-home">
+          <div class="card">
+            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">학습 메뉴</div>
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">⭐ 즐겨찾기</div><div class="stat-value" id="dash-fav-count">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체단어</div><div class="stat-value" id="dash-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">🔥 학습률</div><div class="stat-value" id="dash-progress">0%</div></div>
+            </div>
+            <button class="btn primary" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
+            <button class="btn" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
+            <button class="btn" onclick="prepareStudy('flash')">⚡ 플래시카드</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-ready">
+          <div class="card">
+            <div style="font-size:18px; font-weight:800; margin-bottom:16px;">학습 범위 선택</div>
+            <select id="ready-day-select"></select>
+            <button id="start-btn" class="btn primary">학습 시작하기</button>
+            <button class="btn" onclick="switchView('home')">취소</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-flash">
+          <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="f-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="f-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
+            </div>
+            <div id="flash-display" onclick="flip()">
+              <div class="flash-fav-pos" style="position:absolute; top:12px; right:12px;" onclick="event.stopPropagation();">
+                <label><input type="checkbox" id="f-fav-check" class="hidden-check" onchange="toggleFlashFav(this.checked)"><span class="fav-star">★</span></label>
+              </div>
+              <div id="f-content" style="width: 100%;"></div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+              <button id="f-prev-btn" class="btn" onclick="prevCard()">이전</button>
+              <button id="f-next-btn" class="btn primary" onclick="nextCard()">다음</button>
+            </div>
+            <button class="btn" onclick="switchView('home')">학습 종료</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-write">
+          <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="w-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="w-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="w-right" style="color:#22c55e">0</div></div>
+            </div>
+            <div class="display-word" id="w-meaning-display"></div>
+            <div id="w-result-msg" class="result-msg"></div>
+            <input type="text" id="w-input" placeholder="영단어를 입력하세요" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button class="btn primary" onclick="checkWrite()">정답 확인</button>
+            <button class="btn" onclick="switchView('home')">학습 종료</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-quiz">
+          <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="q-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="q-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="q-right" style="color:#22c55e">0</div></div>
+            </div>
+            <div id="q-word" class="display-word"></div>
+            <div id="q-options" class="quiz-options-grid"></div>
+            <button class="btn" onclick="switchView('home')" style="margin-top:20px;">학습 종료</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-words">
+          <div class="card">
+            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">📖 내 단어장</div>
+            <div class="ms-container">
+              <div class="ms-header" id="ms-header" onclick="toggleMsList()">범위: 전체</div>
+              <div class="ms-list" id="ms-list"></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:15px;">
+                <button class="btn" style="flex:1; padding:10px; font-size:13px;" onclick="bulkFavorite(true)">✨ 전체 선택</button>
+                <button class="btn" style="flex:1; padding:10px; font-size:13px;" onclick="bulkFavorite(false)">❌ 전체 해제</button>
+            </div>
+            <div id="word-list-container"></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+    <nav class="tabbar">
+      <div class="tabbar-inner">
+        <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
+        <button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbyF9phDAUNsa_-wjt4E4SyvDM71DTkqA-CPMFQhInZ4YvdvEylgsgC_IEy4k0dSn14/exec";
 
     let appData = { words: [] };
@@ -9,8 +177,8 @@
     let selectedDays = ['all'];
     let currentQuestionAttempted = false; 
     let isProcessing = false; 
-    
-    // [복구됨] 즐겨찾기 데이터를 브라우저에 저장하는 변수
+
+    // [복구] 로컬 스토리지에서 즐겨찾기 상태 불러오기
     let savedFavorites = JSON.parse(localStorage.getItem('english_favs') || '{}');
 
     async function init() {
@@ -18,11 +186,10 @@
         const response = await fetch(API_URL);
         const data = await response.json();
         
-        // 데이터 로드 후 즐겨찾기 상태 반영
+        // 데이터 병합 및 즐겨찾기 상태 복구
         appData.words = data.words.map(w => {
-            // 단어(word)를 고유 키로 사용하여 즐겨찾기 여부 확인
-            if(savedFavorites[w.word]) w.favorite = true; 
-            return w;
+          if (savedFavorites[w.word]) w.favorite = true;
+          return w;
         });
 
         document.getElementById('loading-overlay').style.display = 'none';
@@ -37,48 +204,40 @@
 
         updateHomeStats();
       } catch (e) {
-        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.<br>잠시 후 다시 시도해주세요.";
-        console.error(e);
+        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 불러오지 못했습니다.";
       }
     }
 
-    // --- 즐겨찾기 관련 핵심 기능 (복구됨) ---
+    // --- 즐겨찾기 시스템 (복구) ---
     function toggleFav(wordText, checked) {
-        // 1. 메모리에 반영
-        const target = appData.words.find(w => w.word === wordText);
-        if (target) target.favorite = checked;
-
-        // 2. 로컬 스토리지(영구 저장소)에 반영
-        if (checked) {
-            savedFavorites[wordText] = true;
-        } else {
-            delete savedFavorites[wordText];
-        }
-        localStorage.setItem('english_favs', JSON.stringify(savedFavorites));
-        
-        updateHomeStats();
+      const word = appData.words.find(w => w.word === wordText);
+      if(word) word.favorite = checked;
+      
+      if(checked) savedFavorites[wordText] = true;
+      else delete savedFavorites[wordText];
+      
+      localStorage.setItem('english_favs', JSON.stringify(savedFavorites));
+      updateHomeStats();
     }
 
-    function toggleFlashFav(checked) { 
-        // 현재 플래시카드 단어의 즐겨찾기 토글
-        const currentWordText = filteredWords[curIdx].word;
-        toggleFav(currentWordText, checked); 
+    function toggleFlashFav(checked) {
+      const currentWord = filteredWords[curIdx].word;
+      toggleFav(currentWord, checked);
     }
 
     function bulkFavorite(status) {
-        // 현재 리스트에 보이는 단어들 일괄 처리
-        let list = getCurrentList();
-        list.forEach(w => {
-            w.favorite = status;
-            if(status) savedFavorites[w.word] = true;
-            else delete savedFavorites[w.word];
-        });
-        localStorage.setItem('english_favs', JSON.stringify(savedFavorites));
-        renderWordList(); 
-        updateHomeStats();
+      let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => (selectedDays.includes('fav') && w.favorite) || selectedDays.includes(String(w.day)));
+      list.forEach(w => {
+        w.favorite = status;
+        if(status) savedFavorites[w.word] = true;
+        else delete savedFavorites[w.word];
+      });
+      localStorage.setItem('english_favs', JSON.stringify(savedFavorites));
+      renderWordList();
+      updateHomeStats();
     }
-    // ------------------------------------
 
+    // --- 뷰 관리 및 통계 ---
     function toggleMsList() { document.getElementById('ms-list').classList.toggle('show'); }
     window.onclick = (e) => { if (!e.target.closest('.ms-container')) document.getElementById('ms-list').classList.remove('show'); };
 
@@ -126,21 +285,19 @@
       window.speechSynthesis.speak(u);
     }
 
-    // --- 주관식 입력 수정 (공백 제거 로직 포함) ---
+    // --- 주관식 학습 로직 (오류 수정됨) ---
     function startWrite() { switchView('write'); currentQuestionAttempted = false; isProcessing = false; updateWrite(); }
     
     function updateWrite() {
       const w = filteredWords[curIdx];
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
-      
       msg.innerHTML = '';
       input.value = '';
       input.style.borderColor = "var(--border)";
       input.style.backgroundColor = "var(--surface2)";
       input.disabled = false;
       input.focus();
-
       document.getElementById('w-meaning-display').textContent = w.meaning;
       document.getElementById('w-cur').textContent = curIdx + 1;
       document.getElementById('w-total').textContent = filteredWords.length;
@@ -149,18 +306,16 @@
 
     function checkWrite() {
       if (isProcessing) return; 
-
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
       
-      // [핵심 수정] 앞뒤 공백 제거 후 비교
+      // 핵심 수정: .trim()으로 공백 제거 후 비교
       const userAns = input.value.trim().toLowerCase();
       const originAns = filteredWords[curIdx].word.trim().toLowerCase();
 
       if (!userAns) return;
 
       if (userAns === originAns) {
-        // 정답 처리
         isProcessing = true;
         if (!currentQuestionAttempted) {
           msg.innerHTML = `<b style="color:#22c55e;">정답입니다! 👏</b>`;
@@ -168,7 +323,6 @@
         } else {
           msg.innerHTML = `<b style="color:#2dd4ff;">맞았습니다! 다음으로 넘어갑니다. 👍</b>`;
         }
-        
         input.style.borderColor = "#22c55e";
         input.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
         speak(filteredWords[curIdx].word);
@@ -176,18 +330,11 @@
         setTimeout(() => {
           isProcessing = false;
           if(!document.getElementById('view-write').classList.contains('active')) return;
-
           if (curIdx < filteredWords.length - 1) { 
-            curIdx++; 
-            currentQuestionAttempted = false; 
-            updateWrite(); 
-          } else { 
-            finishStudy(); 
-          }
+            curIdx++; currentQuestionAttempted = false; updateWrite(); 
+          } else { finishStudy(); }
         }, 800);
-
       } else {
-        // 오답 처리
         currentQuestionAttempted = true;
         msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:24px;">${filteredWords[curIdx].word.trim()}</b>`;
         input.style.borderColor = "#ff4d4f";
@@ -197,27 +344,14 @@
       }
     }
 
-    // --- 기타 학습 기능 ---
+    // --- 학습 공통 및 기타 로직 ---
     function prepareStudy(type) {
       switchView('ready');
       document.getElementById('start-btn').onclick = () => {
         const filter = document.getElementById('ready-day-select').value;
-        if (filter === 'all') {
-            filteredWords = [...appData.words];
-        } else if (filter === 'fav') {
-            filteredWords = appData.words.filter(w => w.favorite);
-        } else {
-            filteredWords = appData.words.filter(w => w.day == filter);
-        }
-
-        if(!filteredWords.length) {
-            alert(filter === 'fav' ? "즐겨찾기한 단어가 없습니다." : "해당 범위에 단어가 없습니다.");
-            return;
-        }
-        
-        // 셔플
+        filteredWords = (filter === 'all') ? [...appData.words] : (filter === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == filter);
+        if(!filteredWords.length) return alert("단어가 없습니다.");
         filteredWords.sort(() => Math.random() - 0.5);
-        
         curIdx = 0; quizStats.right = 0;
         if(type === 'flash') startFlash();
         else if(type === 'write') startWrite();
@@ -239,8 +373,7 @@
     function checkQuiz(o, btn) {
       if (isProcessing) return;
       if(o === filteredWords[curIdx].meaning) {
-        isProcessing = true;
-        btn.classList.add('correct'); 
+        isProcessing = true; btn.classList.add('correct'); 
         if(!currentQuestionAttempted) quizStats.right++;
         setTimeout(() => { 
           isProcessing = false;
@@ -262,9 +395,7 @@
       document.getElementById('f-cur').textContent = curIdx + 1;
       document.getElementById('f-total').textContent = filteredWords.length;
       document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
-      // 즐겨찾기 체크박스 상태 업데이트
       document.getElementById('f-fav-check').checked = !!w.favorite;
-      
       document.getElementById('f-content').innerHTML = flipped ? 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin: 20px auto 0;">${w.meaning}</div>` : 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
@@ -274,19 +405,12 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("끝!"); switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-    function getCurrentList() {
-        return selectedDays.includes('all') ? appData.words : appData.words.filter(w => selectedDays.includes('fav') && w.favorite || selectedDays.includes(String(w.day)));
-    }
-
     function renderWordList() {
-      let list = getCurrentList();
+      let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => (selectedDays.includes('fav') && w.favorite) || selectedDays.includes(String(w.day)));
       document.getElementById('word-list-container').innerHTML = list.map(w => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
           <div style="display:flex; align-items:center; gap:12px;">
-            <label>
-                <input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.word}', this.checked)">
-                <span class="fav-star">★</span>
-            </label>
+            <label><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.word}', this.checked)"><span class="fav-star">★</span></label>
             <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning} (Day ${w.day})</div></div>
           </div>
           <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
@@ -295,4 +419,6 @@
 
     window.onload = init;
     document.getElementById('w-input').addEventListener('keypress', e => { if(e.key==='Enter') checkWrite(); });
-</script>
+  </script>
+</body>
+</html>

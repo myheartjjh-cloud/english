@@ -411,7 +411,7 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-    function renderWordList() {
+function renderWordList() {
       let list = [];
       if (selectedDays.includes('all')) {
         list = appData.words;
@@ -431,8 +431,11 @@
               <span class="fav-star">★</span>
             </label>
             <div>
-              <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
-              <div style="font-size:14px; opacity:0.7;">${w.meaning} (${w.day})</div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:12px; color:var(--muted); font-weight:normal;">(${w.day})</span>
+                <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
+              </div>
+              <div style="font-size:14px; opacity:0.7;">${w.meaning}</div>
             </div>
           </div>
           <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
@@ -445,4 +448,5 @@
   </script>
 </body>
 </html>
+
 

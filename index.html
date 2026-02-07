@@ -23,7 +23,6 @@
     .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
     
-    /* 대시보드 통계 */
     .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
     .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
     .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
@@ -31,46 +30,25 @@
     
     .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: opacity 0.2s; }
     .btn:active { opacity: 0.7; } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
     select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; }
-    
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
-    /* 하단바 2칸 최적화 */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
     
     .view { display: none; } .view.active { display: block; }
-    
-    /* 즐겨찾기 별표 공통 */
     .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
     .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
     .hidden-check { display: none; }
     .hidden-check:checked + .fav-star { color: #ffcc00; }
 
-    /* 플래시카드 박스 내부 고정 별표 */
-    #flash-display { 
-      position: relative; 
-      min-height: 280px; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      background: var(--surface2); 
-      border-radius: var(--radius); 
-      border: 1px solid var(--border); 
-      cursor: pointer; 
-      text-align: center; 
-      padding: 20px; 
-    }
-    .flash-fav-pos { 
-      position: absolute; 
-      top: 12px; 
-      right: 12px; 
-      z-index: 10; 
-    }
+    #flash-display { position: relative; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer; text-align: center; padding: 20px; }
+    .flash-fav-pos { position: absolute; top: 12px; right: 12px; z-index: 10; }
+    .flash-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
 
     #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-align: center; padding: 20px; }
     .result-msg { text-align: center; font-weight: 700; min-height: 45px; margin-bottom: 10px; line-height: 1.4; font-size: 15px; }
@@ -78,7 +56,6 @@
     .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
-    
     .bulk-actions { display: flex; gap: 8px; margin-bottom: 15px; }
     .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
   </style>
@@ -132,10 +109,11 @@
               <div id="f-content" style="width: 100%;"></div>
             </div>
 
-            <div style="display:flex; gap:10px; margin-top:20px;">
-              <button class="btn primary" onclick="nextCard()">다음 단어</button>
-              <button class="btn" onclick="switchView('home')">종료</button>
+            <div class="flash-btn-grid">
+              <button id="f-prev-btn" class="btn" onclick="prevCard()">이전 단어</button>
+              <button id="f-next-btn" class="btn primary" onclick="nextCard()">다음 단어</button>
             </div>
+            <button class="btn" onclick="switchView('home')" style="margin-top: -2px;">학습 종료</button>
           </div>
         </section>
 
@@ -243,7 +221,7 @@
       if(word) toggleFav(word.id, checked);
     }
 
-    function startFlash() { switchView('flash'); flipped = false; updateFlash(); }
+    function startFlash() { switchView('flash'); curIdx = 0; flipped = false; updateFlash(); }
     function updateFlash() {
       const w = filteredWords[curIdx];
       document.getElementById('f-cur').textContent = curIdx + 1;
@@ -251,6 +229,9 @@
       document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
       document.getElementById('f-fav-check').checked = w.favorite;
       
+      // 이전 버튼 활성/비활성 처리
+      document.getElementById('f-prev-btn').disabled = (curIdx === 0);
+
       document.getElementById('f-content').innerHTML = flipped ? 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div>
          <div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin: 20px auto 0;">${w.meaning}</div>` : 
@@ -260,7 +241,25 @@
     }
 
     function flip() { flipped = !flipped; updateFlash(); }
-    function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("끝났습니다!"); switchView('home'); } }
+    
+    function nextCard() { 
+      if(curIdx < filteredWords.length - 1) { 
+        curIdx++; 
+        flipped = false; 
+        updateFlash(); 
+      } else { 
+        alert("모든 단어를 학습했습니다!"); 
+        switchView('home'); 
+      } 
+    }
+
+    function prevCard() {
+      if(curIdx > 0) {
+        curIdx--;
+        flipped = false;
+        updateFlash();
+      }
+    }
 
     function prepareStudy(type) {
       switchView('ready');
@@ -269,10 +268,9 @@
         filteredWords = (filter === 'all') ? [...appData.words] : (filter === 'fav') ? appData.words.filter(w => w.favorite) : appData.words.filter(w => w.day == filter);
         if(!filteredWords.length) return alert("단어가 없습니다.");
         filteredWords.sort(() => Math.random() - 0.5);
-        curIdx = 0; quizStats.right = 0;
         if(type === 'flash') startFlash();
-        else if(type === 'write') startWrite();
-        else startQuiz();
+        else if(type === 'write') { curIdx = 0; quizStats.right = 0; startWrite(); }
+        else { curIdx = 0; quizStats.right = 0; startQuiz(); }
       };
     }
 

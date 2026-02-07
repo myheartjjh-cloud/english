@@ -68,7 +68,6 @@
     <header class="appbar">📚 맞춤형 영어학습</header>
     <main class="content">
       <div class="container">
-        
         <section class="view active" id="view-home">
           <div class="card">
             <div style="font-size:20px; font-weight:900; margin-bottom:12px;">학습 메뉴</div>
@@ -128,7 +127,7 @@
               <div class="stat-item"><div class="stat-label">🔥 진도율</div><div class="stat-value" id="f-progress" style="color:#2dd4ff">0%</div></div>
             </div>
             <div id="flash-display" onclick="flip()">
-              <div style="position:absolute; top:12px; right:12px;" onclick="event.stopPropagation();">
+              <div class="flash-fav-pos" style="position:absolute; top:12px; right:12px;" onclick="event.stopPropagation();">
                 <label><input type="checkbox" id="f-fav-check" class="hidden-check" onchange="toggleFlashFav(this.checked)"><span class="fav-star">★</span></label>
               </div>
               <div id="f-content" style="width: 100%;"></div>
@@ -155,9 +154,9 @@
             <div id="word-list-container"></div>
           </div>
         </section>
-
       </div>
     </main>
+
     <nav class="tabbar">
       <div class="tabbar-inner">
         <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
@@ -178,7 +177,7 @@
     let currentQuestionAttempted = false; 
     let isProcessing = false; 
 
-    // [중요] 즐겨찾기 영구 저장 로직
+    // [복구] 로컬 스토리지에서 즐겨찾기 상태 불러오기
     let savedFavorites = JSON.parse(localStorage.getItem('english_favs') || '{}');
 
     async function init() {
@@ -186,7 +185,7 @@
         const response = await fetch(API_URL);
         const data = await response.json();
         
-        // 데이터 로드 및 즐겨찾기 매칭
+        // 데이터 로드 및 즐겨찾기 상태 병합
         appData.words = data.words.map(w => {
           if (savedFavorites[w.word]) w.favorite = true;
           return w;
@@ -208,11 +207,12 @@
       }
     }
 
-    // --- 즐겨찾기 핵심 함수 ---
+    // --- [핵심] 즐겨찾기 시스템 복구 ---
     function toggleFav(wordText, checked) {
       const word = appData.words.find(w => w.word === wordText);
       if(word) word.favorite = checked;
       
+      // 로컬 스토리지 업데이트
       if(checked) savedFavorites[wordText] = true;
       else delete savedFavorites[wordText];
       
@@ -226,7 +226,7 @@
     }
 
     function bulkFavorite(status) {
-      let list = getCurrentList();
+      let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => (selectedDays.includes('fav') && w.favorite) || selectedDays.includes(String(w.day)));
       list.forEach(w => {
         w.favorite = status;
         if(status) savedFavorites[w.word] = true;
@@ -237,49 +237,17 @@
       updateHomeStats();
     }
 
-    function getCurrentList() {
-      return selectedDays.includes('all') ? appData.words : appData.words.filter(w => (selectedDays.includes('fav') && w.favorite) || selectedDays.includes(String(w.day)));
-    }
-
-    // --- 뷰 전환 및 기본 기능 ---
-    function switchView(id) {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById('view-' + id).classList.add('active');
-      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
-      if(id === 'words') renderWordList();
-      if(id === 'home') updateHomeStats();
-      const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
-      if(document.getElementById('tab-' + tabId)) document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
-      isProcessing = false;
-    }
-
-    function speak(t) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'en-US'; u.rate = 0.8;
-      window.speechSynthesis.speak(u);
-    }
-
-    function updateHomeStats() {
-      const total = appData.words.length;
-      const favs = appData.words.filter(w => w.favorite).length;
-      document.getElementById('dash-fav-count').textContent = favs;
-      document.getElementById('dash-total').textContent = total;
-      document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
-    }
-
-    // --- 주관식 학습 (정답 후 이동 오류 수정) ---
-    function startWrite() { switchView('write'); currentQuestionAttempted = false; updateWrite(); }
+    // --- 주관식 로직 (동작 확인된 코드 그대로 유지) ---
+    function startWrite() { switchView('write'); currentQuestionAttempted = false; isProcessing = false; updateWrite(); }
     
     function updateWrite() {
       const w = filteredWords[curIdx];
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
-      msg.innerHTML = '';
-      input.value = '';
+      msg.innerHTML = ''; input.value = '';
       input.style.borderColor = "var(--border)";
-      input.disabled = false;
-      input.focus();
+      input.style.backgroundColor = "var(--surface2)";
+      input.disabled = false; input.focus();
       document.getElementById('w-meaning-display').textContent = w.meaning;
       document.getElementById('w-cur').textContent = curIdx + 1;
       document.getElementById('w-total').textContent = filteredWords.length;
@@ -290,22 +258,23 @@
       if (isProcessing) return; 
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
-      
-      const userVal = input.value.trim().toLowerCase();
-      const correctVal = filteredWords[curIdx].word.trim().toLowerCase();
-
-      if (!userVal) return;
-
-      if (userVal === correctVal) {
-        isProcessing = true; // 중복 클릭 방지
-        if (!currentQuestionAttempted) quizStats.right++;
-        
-        msg.innerHTML = `<b style="color:#22c55e;">정답입니다! 👏</b>`;
+      const userAns = input.value.trim().toLowerCase();
+      const originAns = filteredWords[curIdx].word.trim().toLowerCase();
+      if (!userAns) return;
+      if (userAns === originAns) {
+        isProcessing = true;
+        if (!currentQuestionAttempted) {
+          msg.innerHTML = `<b style="color:#22c55e;">정답입니다! 👏</b>`;
+          quizStats.right++;
+        } else {
+          msg.innerHTML = `<b style="color:#2dd4ff;">맞았습니다! 다음으로 넘어갑니다. 👍</b>`;
+        }
         input.style.borderColor = "#22c55e";
+        input.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
         speak(filteredWords[curIdx].word);
-
         setTimeout(() => {
           isProcessing = false;
+          if(!document.getElementById('view-write').classList.contains('active')) return;
           if (curIdx < filteredWords.length - 1) { 
             curIdx++; currentQuestionAttempted = false; updateWrite(); 
           } else { finishStudy(); }
@@ -314,12 +283,13 @@
         currentQuestionAttempted = true;
         msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:24px;">${filteredWords[curIdx].word.trim()}</b>`;
         input.style.borderColor = "#ff4d4f";
+        input.style.backgroundColor = "rgba(255, 77, 79, 0.05)";
         input.value = ''; input.focus();
       }
     }
 
-    // --- 사지선다 퀴즈 ---
-    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; updateQuiz(); }
+    // --- 사지선다 및 기타 로직 ---
+    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; isProcessing = false; updateQuiz(); }
     function updateQuiz() {
       const t = filteredWords[curIdx];
       document.getElementById('q-word').textContent = t.word;
@@ -337,6 +307,7 @@
         if(!currentQuestionAttempted) quizStats.right++;
         setTimeout(() => { 
           isProcessing = false;
+          if(!document.getElementById('view-quiz').classList.contains('active')) return;
           if(curIdx < filteredWords.length - 1) { curIdx++; currentQuestionAttempted = false; updateQuiz(); } else { finishStudy(); } 
         }, 800);
       } else { currentQuestionAttempted = true; btn.classList.add('wrong'); }
@@ -351,7 +322,7 @@
       document.getElementById('f-progress').textContent = Math.round(((curIdx + 1) / filteredWords.length) * 100) + "%";
       document.getElementById('f-fav-check').checked = !!w.favorite;
       document.getElementById('f-content').innerHTML = flipped ? 
-        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">${w.meaning}</div>` : 
+        `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="font-size:22px; margin-top:20px; border-top:1px solid var(--border); padding-top:20px; width:80%; margin: 20px auto 0;">${w.meaning}</div>` : 
         `<div style="font-size:32px; font-weight:900; color:var(--primary2);">${w.word}</div><div style="margin-top:15px; color:var(--muted); font-size:14px;">터치하여 뜻 보기</div>`;
       if(!flipped) speak(w.word);
     }
@@ -359,7 +330,58 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { alert("끝!"); switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-    // --- 공통 로직 ---
+    // --- 공통 및 UI 관리 ---
+    function switchView(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + id).classList.add('active');
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+      if(id === 'words') renderWordList();
+      if(id === 'home') updateHomeStats();
+      const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
+      document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
+      isProcessing = false;
+    }
+
+    function updateHomeStats() {
+      const total = appData.words.length;
+      const favs = appData.words.filter(w => w.favorite).length;
+      document.getElementById('dash-fav-count').textContent = favs;
+      document.getElementById('dash-total').textContent = total;
+      document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
+    }
+
+    function renderWordList() {
+      let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => (selectedDays.includes('fav') && w.favorite) || selectedDays.includes(String(w.day)));
+      document.getElementById('word-list-container').innerHTML = list.map(w => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <label><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.word}', this.checked)"><span class="fav-star">★</span></label>
+            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning} (Day ${w.day})</div></div>
+          </div>
+          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
+        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">선택된 단어가 없습니다.</div>';
+    }
+
+    function toggleMsList() { document.getElementById('ms-list').classList.toggle('show'); }
+    window.onclick = (e) => { if (!e.target.closest('.ms-container')) document.getElementById('ms-list').classList.remove('show'); };
+    function handleMsClick(e, val) {
+      e.stopPropagation();
+      const cb = document.getElementById(`cb-${val}`);
+      if (e.target.tagName !== 'INPUT') cb.checked = !cb.checked;
+      if (val === 'all') {
+        if (cb.checked) {
+          selectedDays = ['all'];
+          document.querySelectorAll('.ms-list input').forEach(i => { if(i.id !== 'cb-all') i.checked = false; });
+        } else cb.checked = true;
+      } else {
+        document.getElementById('cb-all').checked = false;
+        selectedDays = Array.from(document.querySelectorAll('.ms-list input:checked')).map(i => i.value);
+        if (!selectedDays.length) { document.getElementById('cb-all').checked = true; selectedDays = ['all']; }
+      }
+      document.getElementById('ms-header').textContent = selectedDays.includes('all') ? "범위: 전체" : `범위: ${selectedDays.length}개 선택됨`;
+      renderWordList();
+    }
+
     function prepareStudy(type) {
       switchView('ready');
       document.getElementById('start-btn').onclick = () => {
@@ -375,38 +397,17 @@
     }
 
     function finishStudy() {
-      alert(`학습 완료!\n맞은 개수: ${quizStats.right} / ${filteredWords.length}`);
+      const rate = Math.round((quizStats.right / filteredWords.length) * 100);
+      alert(`학습 완료!\n맞은 개수: ${quizStats.right} / ${filteredWords.length}\n정답률: ${rate}%`);
       switchView('home');
     }
 
-    function renderWordList() {
-      let list = getCurrentList();
-      document.getElementById('word-list-container').innerHTML = list.map(w => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <label><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.word}', this.checked)"><span class="fav-star">★</span></label>
-            <div><div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div><div style="font-size:14px; opacity:0.7;">${w.meaning}</div></div>
-          </div>
-          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
-        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">선택된 단어가 없습니다.</div>';
+    function speak(t) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = 'en-US'; u.rate = 0.8;
+      window.speechSynthesis.speak(u);
     }
-
-    function toggleMsList() { document.getElementById('ms-list').classList.toggle('show'); }
-    handleMsClick = (e, val) => {
-      e.stopPropagation();
-      const cb = document.getElementById(`cb-${val}`);
-      if (e.target.tagName !== 'INPUT') cb.checked = !cb.checked;
-      if (val === 'all') {
-        if (cb.checked) { selectedDays = ['all']; document.querySelectorAll('.ms-list input').forEach(i => { if(i.id !== 'cb-all') i.checked = false; }); }
-        else cb.checked = true;
-      } else {
-        document.getElementById('cb-all').checked = false;
-        selectedDays = Array.from(document.querySelectorAll('.ms-list input:checked')).map(i => i.value);
-        if (!selectedDays.length) { document.getElementById('cb-all').checked = true; selectedDays = ['all']; }
-      }
-      document.getElementById('ms-header').textContent = selectedDays.includes('all') ? "범위: 전체" : `범위: ${selectedDays.length}개 선택됨`;
-      renderWordList();
-    };
 
     window.onload = init;
     document.getElementById('w-input').addEventListener('keypress', e => { if(e.key==='Enter') checkWrite(); });

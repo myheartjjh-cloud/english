@@ -37,7 +37,13 @@
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
+    .tab[aria-selected="true"] { color: var(--primary2); 
+  /* 0.05를 0.15나 0.2 정도로 높이면 색이 진해집니다 */
+  background: rgba(45, 212, 255, 0.15); 
+  /* 선택된 느낌을 더 주려면 모서리를 살짝 굴려도 예쁩니다 */
+  border-radius: 12px;
+  margin: 4px; /* 테두리와 간격을 줌 */
+}
     
     .view { display: none; } .view.active { display: block; }
     .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
@@ -439,3 +445,4 @@
   </script>
 </body>
 </html>
+

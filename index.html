@@ -150,7 +150,10 @@
 
         <section class="view" id="view-words">
           <div class="card">
-            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">📖 내 단어장</div>
+            <div style="font-size:20px; font-weight:900; margin-bottom:12px; display: flex; justify-content: space-between; align-items: center;">
+              <span>📖 내 단어장</span>
+              <span id="word-fav-badge" style="font-size:14px; background:var(--surface2); padding:4px 10px; border-radius:10px; color:#ffcc00;">⭐ 0</span>
+            </div>
             <div class="ms-container">
               <div class="ms-header" id="ms-header" onclick="toggleMsList()">범위: 전체</div>
               <div class="ms-list" id="ms-list"></div>
@@ -187,7 +190,6 @@
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         
-        // 데이터 전처리 (favorite 속성이 없으면 기본값 false 부여)
         appData.words.forEach(w => { if(w.favorite === undefined) w.favorite = false; });
 
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
@@ -197,6 +199,8 @@
 
         const msList = document.getElementById('ms-list');
         let msHtml = `<div class="ms-item" onclick="handleMsClick(event, 'all')"><input type="checkbox" value="all" id="cb-all" checked> <label>전체보기</label></div>`;
+        // [복구 1] 단어장 필터 내 즐겨찾기 추가
+        msHtml += `<div class="ms-item" onclick="handleMsClick(event, 'fav')"><input type="checkbox" value="fav" id="cb-fav"> <label>⭐ 즐겨찾기</label></div>`;
         msHtml += days.map(d => `<div class="ms-item" onclick="handleMsClick(event, '${d}')"><input type="checkbox" value="${d}" id="cb-${d}"> <label>${d}</label></div>`).join('');
         msList.innerHTML = msHtml;
 
@@ -234,6 +238,9 @@
       document.getElementById('dash-fav-count').textContent = favs;
       document.getElementById('dash-total').textContent = total;
       document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
+      // [복구 2] 단어장 제목 옆 즐겨찾기 숫자 업데이트
+      const badge = document.getElementById('word-fav-badge');
+      if(badge) badge.textContent = `⭐ ${favs}`;
     }
 
     function switchView(id) {
@@ -245,13 +252,13 @@
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
-    /* 즐겨찾기 토글 함수 */
     function toggleFav(id, checked) {
       const word = appData.words.find(w => w.id == id);
       if(word) {
         word.favorite = checked;
         updateHomeStats();
-        // 단어장 뷰가 아닐 때(예: 플래시카드 등)를 위해 필요한 경우 renderWordList 호출 생략 가능
+        // 즐겨찾기 필터 활성 시 실시간 제거를 위해 렌더링 호출
+        if(selectedDays.includes('fav')) renderWordList();
       }
     }
 
@@ -277,7 +284,7 @@
       };
     }
 
-    /* 주관식 로직 */
+    /* 주관식 로직 - 보존 */
     function startWrite() { isWrongState = false; switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
@@ -361,9 +368,19 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-    /* 단어장 리스트 렌더링 */
     function renderWordList() {
-      let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => selectedDays.includes(String(w.day)));
+      // 필터 로직: '전체'면 전체, 아니면 체크된 day 및 fav(즐겨찾기) 포함
+      let list = [];
+      if (selectedDays.includes('all')) {
+        list = appData.words;
+      } else {
+        list = appData.words.filter(w => {
+          const daySelected = selectedDays.includes(String(w.day));
+          const favSelected = selectedDays.includes('fav') && w.favorite;
+          return daySelected || favSelected;
+        });
+      }
+
       document.getElementById('word-list-container').innerHTML = list.map(w => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
           <div style="display:flex; align-items:center; gap:12px;">

@@ -23,17 +23,21 @@
     .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
     
+    /* Stats Dashboard */
     .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
     .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
     .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
     .stat-value { font-size: 15px; font-weight: 800; color: var(--primary2); }
     
+    /* Buttons */
     .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: all 0.2s; }
     .btn:active { opacity: 0.7; transform: scale(0.98); } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
     select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; transition: all 0.2s; }
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
+    /* Tabbar */
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -44,12 +48,14 @@
     .hidden-check { display: none; }
     .hidden-check:checked + .fav-star { color: #ffcc00; }
 
+    /* Quiz/Flashcards */
     #flash-display { position: relative; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer; text-align: center; padding: 20px; }
     .quiz-options-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
     .quiz-option { background: var(--surface2); border: 1px solid var(--border); padding: 16px; border-radius: 14px; cursor: pointer; text-align: center; font-weight: 600; font-size: 16px; color: var(--text); min-height: 56px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
     .quiz-option.correct { background: #22c55e !important; color: white; border-color: #22c55e; }
     .quiz-option.wrong { background: #ff4d4f !important; color: white; border-color: #ff4d4f; opacity: 0.7; pointer-events: none; }
     
+    /* Multi-select Dropdown */
     .ms-container { position: relative; width: 100%; margin-bottom: 15px; }
     .ms-header { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-size: 18px; text-align: center; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
     .ms-header::after { content: '▼'; font-size: 12px; opacity: 0.5; }
@@ -58,7 +64,7 @@
     .ms-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
     
     #loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; }
-    .result-msg { text-align: center; font-weight: 700; min-height: 40px; margin-bottom: 10px; line-height: 1.4; font-size: 16px; }
+    .result-msg { text-align: center; font-weight: 700; min-height: 30px; margin-bottom: 10px; line-height: 1.4; font-size: 16px; }
   </style>
 </head>
 <body>
@@ -176,21 +182,11 @@
     let quizStats = { right: 0 };
     let selectedDays = ['all'];
     let currentQuestionAttempted = false; 
-    let isProcessing = false; 
-
-    // [복구] 로컬 스토리지에서 즐겨찾기 상태 불러오기
-    let savedFavs = JSON.parse(localStorage.getItem('english_app_favs') || '[]');
 
     async function init() {
       try {
         const response = await fetch(API_URL);
         appData = await response.json();
-
-        // [복구] 불러온 데이터에 저장된 즐겨찾기 상태 적용
-        appData.words.forEach(w => {
-          if (savedFavs.includes(String(w.id))) w.favorite = true;
-        });
-
         document.getElementById('loading-overlay').style.display = 'none';
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
         
@@ -205,12 +201,6 @@
       } catch (e) {
         document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.";
       }
-    }
-
-    // [복구] 즐겨찾기 저장 함수
-    function saveFavsToLocal() {
-      const favIds = appData.words.filter(w => w.favorite).map(w => String(w.id));
-      localStorage.setItem('english_app_favs', JSON.stringify(favIds));
     }
 
     function toggleMsList() { document.getElementById('ms-list').classList.toggle('show'); }
@@ -250,7 +240,6 @@
       if(id === 'home') updateHomeStats();
       const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
-      isProcessing = false;
     }
 
     function speak(t) {
@@ -260,19 +249,20 @@
       window.speechSynthesis.speak(u);
     }
 
-    // 주관식 로직 (동작 확인된 원본 코드 유지)
-    function startWrite() { switchView('write'); currentQuestionAttempted = false; isProcessing = false; updateWrite(); }
+    // --- 주관식 학습 로직 ---
+    function startWrite() { switchView('write'); currentQuestionAttempted = false; updateWrite(); }
     
     function updateWrite() {
       const w = filteredWords[curIdx];
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
+      
       msg.innerHTML = '';
       input.value = '';
       input.style.borderColor = "var(--border)";
       input.style.backgroundColor = "var(--surface2)";
-      input.disabled = false;
       input.focus();
+
       document.getElementById('w-meaning-display').textContent = w.meaning;
       document.getElementById('w-cur').textContent = curIdx + 1;
       document.getElementById('w-total').textContent = filteredWords.length;
@@ -280,45 +270,44 @@
     }
 
     function checkWrite() {
-      if (isProcessing) return; 
       const input = document.getElementById('w-input');
       const msg = document.getElementById('w-result-msg');
       const userAns = input.value.trim().toLowerCase();
-      const originAns = filteredWords[curIdx].word.trim().toLowerCase();
+      const originAns = filteredWords[curIdx].word.toLowerCase();
+
       if (!userAns) return;
+
       if (userAns === originAns) {
-        isProcessing = true; 
         if (!currentQuestionAttempted) {
+          // 처음부터 맞힌 경우
           msg.innerHTML = `<b style="color:#22c55e;">정답입니다! 👏</b>`;
           quizStats.right++;
         } else {
-          msg.innerHTML = `<b style="color:#2dd4ff;">맞았습니다! 다음으로 넘어갑니다. 👍</b>`;
+          // 틀린 후 따라 쓴 경우
+          msg.innerHTML = `<b style="color:#2dd4ff;">잘하셨어요! 다시 외워보세요. 👍</b>`;
         }
+        
         input.style.borderColor = "#22c55e";
         input.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
         speak(filteredWords[curIdx].word);
+
         setTimeout(() => {
-          isProcessing = false; 
-          if(!document.getElementById('view-write').classList.contains('active')) return;
           if (curIdx < filteredWords.length - 1) { 
-            curIdx++; 
-            currentQuestionAttempted = false; 
-            updateWrite(); 
-          } else { 
-            finishStudy(); 
-          }
+            curIdx++; currentQuestionAttempted = false; updateWrite(); 
+          } else { finishStudy(); }
         }, 800);
       } else {
+        // 오답인 경우
         currentQuestionAttempted = true;
-        msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:24px;">${filteredWords[curIdx].word.trim()}</b>`;
+        msg.innerHTML = `<span style="color:#ff4d4f;">틀렸습니다. 정답을 따라 써보세요!</span><br><b style="color:#2dd4ff; font-size:20px;">${filteredWords[curIdx].word}</b>`;
         input.style.borderColor = "#ff4d4f";
         input.style.backgroundColor = "rgba(255, 77, 79, 0.05)";
-        input.value = ''; 
+        input.value = ''; // 입력창 비우고 다시 쓰게 유도
         input.focus();
       }
     }
 
-    // 기타 학습 기능 원본 유지
+    // --- 기타 학습 기능들 ---
     function prepareStudy(type) {
       switchView('ready');
       document.getElementById('start-btn').onclick = () => {
@@ -333,7 +322,7 @@
       };
     }
 
-    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; isProcessing = false; updateQuiz(); }
+    function startQuiz() { switchView('quiz'); currentQuestionAttempted = false; updateQuiz(); }
     function updateQuiz() {
       const t = filteredWords[curIdx];
       document.getElementById('q-word').textContent = t.word;
@@ -345,16 +334,10 @@
       speak(t.word);
     }
     function checkQuiz(o, btn) {
-      if (isProcessing) return;
       if(o === filteredWords[curIdx].meaning) {
-        isProcessing = true;
         btn.classList.add('correct'); 
         if(!currentQuestionAttempted) quizStats.right++;
-        setTimeout(() => { 
-          isProcessing = false;
-          if(!document.getElementById('view-quiz').classList.contains('active')) return;
-          if(curIdx < filteredWords.length - 1) { curIdx++; currentQuestionAttempted = false; updateQuiz(); } else { finishStudy(); } 
-        }, 800);
+        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; currentQuestionAttempted = false; updateQuiz(); } else { finishStudy(); } }, 800);
       } else { currentQuestionAttempted = true; btn.classList.add('wrong'); }
     }
 
@@ -392,22 +375,14 @@
         </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">선택된 단어가 없습니다.</div>';
     }
 
-    // [복구/수정] 즐겨찾기 상태 변경 시 로컬 저장소 업데이트 추가
     function toggleFav(id, checked) {
-      const word = appData.words.find(w => String(w.id) === String(id));
-      if(word) { 
-        word.favorite = checked; 
-        saveFavsToLocal(); // [추가]
-        updateHomeStats(); 
-      }
+      const word = appData.words.find(w => w.id == id);
+      if(word) { word.favorite = checked; updateHomeStats(); }
     }
     function toggleFlashFav(checked) { toggleFav(filteredWords[curIdx].id, checked); }
     function bulkFavorite(status) {
       let list = selectedDays.includes('all') ? appData.words : appData.words.filter(w => selectedDays.includes('fav') && w.favorite || selectedDays.includes(String(w.day)));
-      list.forEach(w => w.favorite = status); 
-      saveFavsToLocal(); // [추가]
-      renderWordList(); 
-      updateHomeStats();
+      list.forEach(w => w.favorite = status); renderWordList(); updateHomeStats();
     }
 
     window.onload = init;

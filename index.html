@@ -3,120 +3,124 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
-  <meta name="theme-color" content="#0b5fff" />
   <title>맞춤형 영어학습</title>
   <style>
     :root {
       --bg: #0b1020; --surface: #111a33; --surface2: #1f2945;
       --text: #eaf0ff; --muted: #a9b4d6; --border: rgba(255,255,255,.12);
       --primary: #0b5fff; --primary2: #2dd4ff; --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 20px; --radius2: 16px; --appbar-h: 60px; --tabbar-h: 72px; --maxw: 600px;
+      --radius: 16px; --appbar-h: 60px; --tabbar-h: 72px; --maxw: 600px;
     }
     @media (prefers-color-scheme: light) {
       :root { --bg: #f6f8ff; --surface: #ffffff; --surface2: #f1f5ff; --text: #0b1020; --muted: #475569; --border: rgba(2,6,23,.12); }
     }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; touch-action: manipulation; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
     .app { min-height: 100vh; display: flex; flex-direction: column; }
-    .appbar { height: var(--appbar-h); position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
-    .content { flex: 1; padding: 20px 16px calc(var(--tabbar-h) + 20px); display: flex; justify-content: center; }
-    .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 20px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; width: 100%; position: relative; }
-    
-    /* 필터 멀티 셀렉트 스타일 */
-    .filter-container { background: var(--surface2); border-radius: var(--radius2); border: 1px solid var(--border); padding: 12px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-    .filter-chip { display: flex; align-items: center; gap: 6px; background: var(--surface); padding: 6px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); transition: 0.2s; }
-    .filter-chip input { margin: 0; cursor: pointer; }
-    .filter-chip.active { border-color: var(--primary2); color: var(--primary2); background: rgba(45, 212, 255, 0.1); }
+    .appbar { height: var(--appbar-h); position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
+    .content { flex: 1; padding: 16px; display: flex; justify-content: center; padding-bottom: 100px; }
+    .container { width: min(var(--maxw), 100%); display: flex; flex-direction: column; gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
 
+    /* 커스텀 멀티 드롭다운 스타일 */
+    .dropdown { position: relative; margin-bottom: 12px; }
+    .dropdown-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 600; padding-left: 4px; }
+    .dropdown-selected { 
+      background: var(--surface2); border: 1px solid var(--border); padding: 14px; border-radius: 12px; 
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+    }
+    .dropdown-selected::after { content: '▼'; font-size: 10px; color: var(--muted); }
+    .dropdown-menu { 
+      position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); 
+      border: 1px solid var(--border); border-radius: 12px; margin-top: 8px; z-index: 50;
+      max-height: 250px; overflow-y: auto; display: none; box-shadow: var(--shadow);
+    }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-item { 
+      display: flex; align-items: center; padding: 12px 16px; gap: 10px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.2s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item input { width: 18px; height: 18px; accent-color: var(--primary2); }
+    .dropdown-item:active { background: var(--surface2); }
+
+    /* 대시보드 스탯 */
     .dashboard-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
-    .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: var(--radius2); text-align: center; border: 1px solid var(--border); }
-    .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
+    .stat-item { background: var(--surface2); padding: 10px 4px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+    .stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
     .stat-value { font-size: 15px; font-weight: 800; color: var(--primary2); }
     
-    .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: opacity 0.2s; }
-    .btn:active { opacity: 0.7; } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
-    .btn-small { padding: 10px; font-size: 13px; margin-bottom: 0; flex: 1; }
-    
-    .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
-    .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-    .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
-    .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .tab[aria-selected="true"] { color: var(--primary2); background: rgba(45, 212, 255, 0.05); }
+    .btn { border: none; background: var(--surface2); padding: 14px; border-radius: 12px; font-weight: 700; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 8px; }
+    .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
+    .count-badge { font-size: 13px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+
+    .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; z-index: 100; }
+    .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .tab[aria-selected="true"] { color: var(--primary2); }
     
     .view { display: none; } .view.active { display: block; }
-    .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
-    .fav-star { font-size: 30px; color: #ccc; transition: color 0.2s; user-select: none; }
-    .hidden-check { display: none; }
-    .hidden-check:checked + .fav-star { color: #ffcc00; }
-    
-    .count-badge { font-size: 14px; background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; margin-left: 8px; vertical-align: middle; font-weight: 600; }
+    .fav-star { font-size: 24px; color: #ccc; cursor: pointer; }
+    .fav-star.active { color: #ffcc00; }
   </style>
 </head>
 <body>
-  <div id="loading-overlay">데이터를 불러오는 중입니다...</div>
+  <div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;">데이터 로딩 중...</div>
 
   <div class="app">
     <header class="appbar">📚 맞춤형 영어학습</header>
+    
     <main class="content">
       <div class="container">
-        
         <section class="view active" id="view-home">
           <div class="card">
-            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">학습 메뉴</div>
             <div class="dashboard-6">
               <div class="stat-item"><div class="stat-label">⭐ 즐겨찾기</div><div class="stat-value" id="dash-fav-count">0</div></div>
               <div class="stat-item"><div class="stat-label">🏁 전체단어</div><div class="stat-value" id="dash-total">0</div></div>
               <div class="stat-item"><div class="stat-label">🔥 학습률</div><div class="stat-value" id="dash-progress">0%</div></div>
             </div>
-            <button class="btn primary" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
-            <button class="btn" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
-            <button class="btn" onclick="prepareStudy('flash')">⚡ 플래시카드</button>
+            <button class="btn primary" onclick="prepareStudy()">🚀 학습 시작하기</button>
           </div>
         </section>
 
         <section class="view" id="view-ready">
           <div class="card">
-            <div style="font-size:18px; font-weight:800; margin-bottom:16px;">학습 범위 (중복 선택 가능)</div>
-            <div id="ready-filter-area" class="filter-container"></div>
-            <button id="start-btn" class="btn primary">학습 시작하기</button>
+            <div style="font-weight:800; margin-bottom:15px;">학습 범위 선택</div>
+            <div class="dropdown" id="dropdown-ready">
+                <div class="dropdown-selected" onclick="toggleDropdown(this)">범위를 선택하세요</div>
+                <div class="dropdown-menu" id="menu-ready"></div>
+            </div>
+            <button class="btn primary" onclick="startStudy()">학습 시작</button>
             <button class="btn" onclick="switchView('home')">취소</button>
           </div>
         </section>
 
-        <section class="view" id="view-flash"> </section>
-
         <section class="view" id="view-words">
           <div class="card">
-            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">
+            <div style="font-size:18px; font-weight:900; margin-bottom:16px;">
                 📖 내 단어장 <span id="list-fav-count" class="count-badge">0</span>
             </div>
-            <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">필터링 (여러 개 선택 가능)</div>
-            <div id="list-filter-area" class="filter-container"></div>
             
-            <div class="bulk-actions">
-                <button class="btn btn-small" onclick="bulkFavorite(true)">✨ 현재 리스트 전체 선택</button>
-                <button class="btn btn-small" onclick="bulkFavorite(false)">❌ 전체 해제</button>
+            <div class="dropdown" id="dropdown-list">
+                <div class="dropdown-label">필터링 (다중 선택 가능)</div>
+                <div class="dropdown-selected" onclick="toggleDropdown(this)">전체보기</div>
+                <div class="dropdown-menu" id="menu-list"></div>
             </div>
-            <div id="word-list-container"></div>
+
+            <div id="word-list-container" style="margin-top:10px;"></div>
           </div>
         </section>
-
       </div>
     </main>
+
     <nav class="tabbar">
-      <div class="tabbar-inner">
-        <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
-        <button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button>
-      </div>
+      <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
+      <button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button>
     </nav>
   </div>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbyF9phDAUNsa_-wjt4E4SyvDM71DTkqA-CPMFQhInZ4YvdvEylgsgC_IEy4k0dSn14/exec";
     let appData = { words: [] };
-    let filteredWords = [];
-    let isEditMode = false;
 
     async function init() {
       try {
@@ -124,135 +128,120 @@
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         
-        // 필터 생성 (Day 목록 추출)
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
-        setupFilters(days);
+        renderDropdownMenu('menu-ready', days);
+        renderDropdownMenu('menu-list', days);
         updateHomeStats();
       } catch (e) {
-        console.error(e);
-        document.getElementById('loading-overlay').innerHTML = "❌ 데이터를 가져오지 못했습니다.";
+        document.getElementById('loading-overlay').innerHTML = "❌ 로딩 실패";
       }
     }
 
-    // 필터 체크박스 생성
-    function setupFilters(days) {
-      const createItems = (prefix) => {
-        let html = `
-          <label class="filter-chip active"><input type="checkbox" value="all" checked onchange="handleFilterChange(this, '${prefix}')"> 전체보기</label>
-          <label class="filter-chip"><input type="checkbox" value="fav" onchange="handleFilterChange(this, '${prefix}')"> ⭐ 즐겨찾기</label>
-        `;
-        html += days.map(d => `<label class="filter-chip"><input type="checkbox" value="${d}" onchange="handleFilterChange(this, '${prefix}')"> ${d}</label>`).join('');
-        return html;
-      };
-
-      document.getElementById('ready-filter-area').innerHTML = createItems('ready');
-      document.getElementById('list-filter-area').innerHTML = createItems('list');
+    // 드롭다운 메뉴 생성
+    function renderDropdownMenu(menuId, days) {
+      const menu = document.getElementById(menuId);
+      let html = `
+        <div class="dropdown-item" onclick="handleSelect(this, 'all')"><input type="checkbox" value="all" checked> 전체보기</div>
+        <div class="dropdown-item" onclick="handleSelect(this, 'fav')"><input type="checkbox" value="fav"> ⭐ 즐겨찾기</div>
+      `;
+      html += days.map(d => `<div class="dropdown-item" onclick="handleSelect(this, '${d}')"><input type="checkbox" value="${d}"> ${d}</div>`).join('');
+      menu.innerHTML = html;
     }
 
-    // 체크박스 변경 핸들러
-    function handleFilterChange(el, prefix) {
-      const parent = el.closest('.filter-container');
-      const checks = parent.querySelectorAll('input[type="checkbox"]');
-      
-      // '전체보기' 체크 시 나머지 해제, 반대의 경우 '전체보기' 해제
-      if (el.value === 'all' && el.checked) {
-        checks.forEach(c => { if(c.value !== 'all') c.checked = false; });
-      } else if (el.checked) {
-        parent.querySelector('input[value="all"]').checked = false;
+    function toggleDropdown(el) {
+      const dropdown = el.parentElement;
+      const isOpen = dropdown.classList.contains('open');
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open')); // 다른거 닫기
+      if(!isOpen) dropdown.classList.add('open');
+    }
+
+    // 항목 선택 처리
+    function handleSelect(itemEl, value) {
+      event.stopPropagation();
+      const checkbox = itemEl.querySelector('input');
+      const menu = itemEl.parentElement;
+      const dropdown = menu.parentElement;
+      const allChecks = menu.querySelectorAll('input');
+
+      if(value === 'all') {
+        allChecks.forEach(c => c.checked = false);
+        checkbox.checked = true;
+      } else {
+        menu.querySelector('input[value="all"]').checked = false;
+        checkbox.checked = !checkbox.checked;
       }
-      
-      // 시각적 효과 (active 클래스)
-      checks.forEach(c => {
-        if(c.checked) c.parentElement.classList.add('active');
-        else c.parentElement.classList.remove('active');
-      });
 
-      if(prefix === 'list') renderWordList();
+      // 아무것도 선택 안되어 있으면 전체보기 체크
+      const checkedCount = Array.from(allChecks).filter(c => c.checked).length;
+      if(checkedCount === 0) menu.querySelector('input[value="all"]').checked = true;
+
+      updateDropdownLabel(dropdown);
+      if(dropdown.id === 'dropdown-list') renderWordList();
     }
 
-    // 선택된 필터값들 가져오기
-    function getSelectedFilters(prefix) {
-      const area = document.getElementById(`${prefix}-filter-area`);
-      const selected = Array.from(area.querySelectorAll('input:checked')).map(i => i.value);
-      if (selected.includes('all') || selected.length === 0) return 'all';
-      return selected;
+    function updateDropdownLabel(dropdown) {
+      const checks = dropdown.querySelectorAll('input:checked');
+      const label = dropdown.querySelector('.dropdown-selected');
+      const selectedValues = Array.from(checks).map(c => c.value === 'all' ? '전체보기' : c.value === 'fav' ? '즐겨찾기' : c.value);
+      
+      label.textContent = selectedValues.join(', ');
     }
 
     function renderWordList() {
-      const filters = getSelectedFilters('list');
-      let list = [];
+      const selected = Array.from(document.querySelectorAll('#menu-list input:checked')).map(c => c.value);
+      let list = appData.words;
 
-      if (filters === 'all') {
-        list = appData.words;
-      } else {
-        // OR 조건으로 합치기
-        list = appData.words.filter(w => {
-          return filters.some(f => (f === 'fav' && w.favorite) || (w.day == f));
-        });
+      if(!selected.includes('all')) {
+        list = appData.words.filter(w => selected.some(f => (f === 'fav' && w.favorite) || (w.day == f)));
       }
 
-      updateHomeStats();
-
       document.getElementById('word-list-container').innerHTML = list.map(w => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 4px; border-bottom:1px solid var(--border);">
           <div style="display:flex; align-items:center; gap:12px;">
-            <label class="fav-star-container"><input type="checkbox" class="hidden-check" ${w.favorite ? 'checked' : ''} onchange="toggleFav('${w.id}', this.checked)"><span class="fav-star">★</span></label>
+            <span class="fav-star ${w.favorite?'active':''}" onclick="toggleFav('${w.id}', this)">★</span>
             <div>
-                <div style="font-weight:800; color:var(--primary2); font-size:18px;">${w.word}</div>
-                <div style="font-size:12px; opacity:0.6;">${w.day} | ${w.meaning}</div>
+              <div style="font-weight:700; color:var(--primary2);">${w.word}</div>
+              <div style="font-size:12px; opacity:0.6;">${w.day} | ${w.meaning}</div>
             </div>
           </div>
-          <button style="background:var(--primary); color:white; border:none; width:36px; height:36px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
-        </div>`).join('') || '<div style="text-align:center; padding:40px; color:var(--muted);">선택된 조건의 단어가 없습니다.</div>';
+          <button style="background:var(--primary); color:white; border:none; width:32px; height:32px; border-radius:50%;" onclick="speak('${w.word}')">🔊</button>
+        </div>`).join('') || '<div style="padding:40px; text-align:center; color:var(--muted);">선택된 단어가 없습니다.</div>';
+      
+      updateHomeStats();
     }
 
-    function prepareStudy(type) {
-      switchView('ready');
-      document.getElementById('start-btn').onclick = () => {
-        const filters = getSelectedFilters('ready');
-        if (filters === 'all') filteredWords = [...appData.words];
-        else {
-          filteredWords = appData.words.filter(w => filters.some(f => (f === 'fav' && w.favorite) || (w.day == f)));
-        }
-
-        if(!filteredWords.length) return alert("단어가 없습니다.");
-        filteredWords.sort(() => Math.random() - 0.5);
-        
-        // 여기에서 type에 따른 함수 실행 (기존 로직 유지)
-        alert(filteredWords.length + "개의 단어로 학습을 시작합니다!");
-        // (startFlash, startWrite, startQuiz 등 연결...)
-      };
+    function toggleFav(id, el) {
+      const word = appData.words.find(w => w.id == id);
+      if(word) {
+        word.favorite = !word.favorite;
+        el.classList.toggle('active');
+        updateHomeStats();
+      }
     }
 
-    // --- 기존 공통 로직 ---
     function updateHomeStats() {
-      if (!appData.words) return;
-      const total = appData.words.length;
       const favs = appData.words.filter(w => w.favorite).length;
+      const total = appData.words.length;
       document.getElementById('dash-fav-count').textContent = favs;
       document.getElementById('dash-total').textContent = total;
-      document.getElementById('dash-progress').textContent = (total > 0 ? Math.round((favs / total) * 100) : 0) + "%";
-      const badge = document.getElementById('list-fav-count');
-      if(badge) badge.textContent = favs;
+      document.getElementById('dash-progress').textContent = Math.round((favs/total)*100) + "%";
+      document.getElementById('list-fav-count').textContent = favs;
     }
 
     function switchView(id) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById('view-' + id).classList.add('active');
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+      document.getElementById('tab-' + (id === 'ready' ? 'home' : id)).setAttribute('aria-selected', 'true');
       if(id === 'words') renderWordList();
-      updateHomeStats();
+      // 드롭다운 닫기
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
     }
 
-    function toggleFav(id, checked) {
-      const word = appData.words.find(w => w.id == id);
-      if(word) { word.favorite = checked; updateHomeStats(); }
-    }
-
-    function bulkFavorite(status) {
-      const filters = getSelectedFilters('list');
-      let list = (filters === 'all') ? appData.words : appData.words.filter(w => filters.some(f => (f === 'fav' && w.favorite) || (w.day == f)));
-      list.forEach(w => w.favorite = status);
-      renderWordList();
+    function prepareStudy() { switchView('ready'); }
+    function startStudy() {
+        const selected = Array.from(document.querySelectorAll('#menu-ready input:checked')).map(c => c.value);
+        alert(selected.join(', ') + " 범위를 학습합니다!");
     }
 
     function speak(t) {
@@ -261,6 +250,13 @@
       u.lang = 'en-US'; u.rate = 0.8;
       window.speechSynthesis.speak(u);
     }
+
+    // 외부 클릭 시 드롭다운 닫기
+    window.onclick = (e) => {
+        if(!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+        }
+    };
 
     window.onload = init;
   </script>

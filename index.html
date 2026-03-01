@@ -38,12 +38,10 @@
     .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .tab[aria-selected="true"] { color: var(--primary2); 
-  /* 0.05를 0.15나 0.2 정도로 높이면 색이 진해집니다 */
-  background: rgba(45, 212, 255, 0.15); 
-  /* 선택된 느낌을 더 주려면 모서리를 살짝 굴려도 예쁩니다 */
-  border-radius: 12px;
-  margin: 4px; /* 테두리와 간격을 줌 */
-}
+      background: rgba(45, 212, 255, 0.15); 
+      border-radius: 12px;
+      margin: 4px; 
+    }
     
     .view { display: none; } .view.active { display: block; }
     .fav-star-container { cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
@@ -70,7 +68,6 @@
     .ms-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
     .ms-item input { width: 18px; height: 18px; cursor: pointer; }
 
-    /* 추가된 스타일 */
     .fav-bulk-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .btn-sm { padding: 8px; font-size: 13px; margin-bottom: 0; border: 1px solid var(--border); }
   </style>
@@ -237,9 +234,14 @@
     let selectedDays = ['all'];
     let hasAnsweredCurrent = false;
     let isWrongState = false;
-
-    // 듣기평가 전용 상태 변수
     let l_isWrongState = false; 
+
+    // 현재 즐겨찾기 상태를 기기(localStorage)에 저장하는 함수
+    function saveFavsToLocal() {
+      if (!appData.words) return;
+      const favIds = appData.words.filter(w => w.favorite).map(w => w.id);
+      localStorage.setItem('myVocabFavs', JSON.stringify(favIds));
+    }
 
     async function init() {
       try {
@@ -247,7 +249,17 @@
         appData = await response.json();
         document.getElementById('loading-overlay').style.display = 'none';
         
-        appData.words.forEach(w => { if(w.favorite === undefined) w.favorite = false; });
+        // localStorage에서 저장된 즐겨찾기 목록 불러오기
+        const savedFavs = JSON.parse(localStorage.getItem('myVocabFavs') || '[]');
+
+        appData.words.forEach(w => { 
+          // 저장된 내역이 있으면 해당 단어를 즐겨찾기로 설정
+          if (savedFavs.includes(w.id)) {
+            w.favorite = true;
+          } else if(w.favorite === undefined) {
+            w.favorite = false; 
+          }
+        });
 
         const days = [...new Set(appData.words.map(w => w.day))].filter(Boolean).sort();
         
@@ -311,6 +323,7 @@
       const word = appData.words.find(w => w.id == id);
       if(word) {
         word.favorite = checked;
+        saveFavsToLocal(); // 즐겨찾기 변경 시 로컬에 저장
         updateHomeStats();
         if(selectedDays.includes('fav')) renderWordList();
       }
@@ -331,6 +344,7 @@
       if(listToChange.length === 0) return;
       
       listToChange.forEach(w => { w.favorite = status; });
+      saveFavsToLocal(); // 즐겨찾기 일괄 변경 시 로컬에 저장
       updateHomeStats();
       renderWordList();
     }
@@ -355,7 +369,7 @@
         if(type === 'flash') startFlash();
         else if(type === 'write') startWrite();
         else if(type === 'quiz') startQuiz();
-        else if(type === 'listen') startListen(); // 듣기 평가 분기 추가
+        else if(type === 'listen') startListen(); 
       };
     }
 
@@ -448,7 +462,7 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-    /* ====== 듣기 평가 로직 (새로 추가) ====== */
+    /* ====== 듣기 평가 로직 ====== */
     function startListen() { 
       switchView('listen'); 
       updateListen(); 
@@ -460,7 +474,6 @@
       document.getElementById('l-total').textContent = filteredWords.length;
       document.getElementById('l-right').textContent = quizStats.right;
       
-      // 1단계 받아쓰기로 화면 초기화
       document.getElementById('l-phase1').style.display = 'block';
       document.getElementById('l-phase2').style.display = 'none';
       
@@ -469,7 +482,7 @@
       document.getElementById('l-input').focus();
       document.getElementById('l-result-msg').innerHTML = '';
       
-      playListenAudio(); // 렌더링 시 자동으로 한 번 들려줌
+      playListenAudio();
     }
 
     function playListenAudio() {
@@ -486,15 +499,13 @@
         document.getElementById('l-input').disabled = true;
         document.getElementById('l-input').blur();
         
-        // 정답을 맞추면 0.8초 후 4지선다 퀴즈(2단계)로 이동
         setTimeout(() => { transitionToListenQuiz(); }, 800);
       } else {
         l_isWrongState = true;
-        // 틀렸을 경우 정답을 알려주고 똑같이 치게 유도 (기존 방식 차용)
         msgArea.innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b><br><span style="font-size:12px; opacity:0.8;">위 단어를 똑같이 적어주세요!</span>`;
         document.getElementById('l-input').value = '';
         document.getElementById('l-input').focus();
-        playListenAudio(); // 틀렸으니 다시 한 번 들려줌
+        playListenAudio();
       }
     }
 
@@ -503,9 +514,8 @@
       document.getElementById('l-phase2').style.display = 'block';
       
       const t = filteredWords[curIdx];
-      document.getElementById('l-word').textContent = t.word; // 맞춘 스펠링 표시
+      document.getElementById('l-word').textContent = t.word;
       
-      // 4지선다 보기 생성
       let opts = [t.meaning, ...appData.words.filter(w=>w.meaning!==t.meaning).sort(()=>Math.random()-0.5).slice(0,3).map(w=>w.meaning)].sort(()=>Math.random()-0.5);
       document.getElementById('l-options').innerHTML = opts.map(o => `<div class="quiz-option" onclick="checkListenQuiz('${o}', this)">${o}</div>`).join('');
     }
@@ -513,7 +523,7 @@
     function checkListenQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct');
-        quizStats.right++; // 듣고 스펠링 적기 + 뜻까지 완전히 맞췄을 때 1점 증가
+        quizStats.right++;
         document.getElementById('l-right').textContent = quizStats.right;
         document.querySelectorAll('#l-options .quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
         
@@ -577,9 +587,8 @@
     function speak(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.8; window.speechSynthesis.speak(u); }
     window.onload = init;
     
-    // 엔터키 입력 바인딩
     document.getElementById('w-input').addEventListener('keypress', e => { if(e.key==='Enter') checkWrite(); });
-    document.getElementById('l-input').addEventListener('keypress', e => { if(e.key==='Enter') checkListenWrite(); }); // 듣기 평가 인풋 엔터키
+    document.getElementById('l-input').addEventListener('keypress', e => { if(e.key==='Enter') checkListenWrite(); });
   </script>
 </body>
 </html>

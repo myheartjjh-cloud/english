@@ -91,7 +91,8 @@
               <div class="stat-item"><div class="stat-label">🏁 전체단어</div><div class="stat-value" id="dash-total">0</div></div>
               <div class="stat-item"><div class="stat-label">🔥 학습률</div><div class="stat-value" id="dash-progress">0%</div></div>
             </div>
-            <button class="btn primary" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #ff8c00, #ff0080);" onclick="prepareStudy('listen')">🎧 듣기 평가 (받아쓰기+퀴즈)</button>
+            <button class="btn" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
             <button class="btn" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
             <button class="btn" onclick="prepareStudy('flash')">⚡ 플래시카드</button>
           </div>
@@ -103,6 +104,38 @@
             <select id="ready-day-select"></select>
             <button id="start-btn" class="btn primary">학습 시작하기</button>
             <button class="btn" onclick="switchView('home')">취소</button>
+          </div>
+        </section>
+
+        <section class="view" id="view-listen">
+          <div class="card">
+            <div class="dashboard-6">
+              <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="l-cur">0</div></div>
+              <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="l-total">0</div></div>
+              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="l-right" style="color:#22c55e">0</div></div>
+            </div>
+            
+            <div id="l-phase1">
+              <div class="display-word" style="cursor:pointer;" onclick="playListenAudio()">
+                <div style="background:var(--primary); color:white; width:70px; height:70px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:36px; box-shadow:0 4px 10px rgba(0,0,0,0.2); transition:transform 0.1s;">🔊</div>
+              </div>
+              <div style="text-align:center; color:var(--muted); font-size:14px; margin-bottom:15px;">스피커를 눌러 소리를 들으세요</div>
+              <div id="l-result-msg" class="result-msg"></div>
+              <input type="text" id="l-input" placeholder="스펠링을 적어주세요" autocomplete="off" autocapitalize="off">
+              <button id="l-check-btn" class="btn primary" onclick="checkListenWrite()">정답 확인</button>
+              
+              <div class="flash-btn-grid" style="margin-top:0; margin-bottom:12px;">
+                <button class="btn" onclick="prevListen()">이전 단어</button>
+                <button class="btn" onclick="nextListen()">다음 단어</button>
+              </div>
+            </div>
+
+            <div id="l-phase2" style="display:none;">
+              <div id="l-word" class="display-word"></div>
+              <div id="l-options" class="quiz-options-grid"></div>
+            </div>
+
+            <button class="btn" onclick="switchView('home')" style="margin-top:12px;">학습 종료</button>
           </div>
         </section>
 
@@ -205,6 +238,9 @@
     let hasAnsweredCurrent = false;
     let isWrongState = false;
 
+    // 듣기평가 전용 상태 변수
+    let l_isWrongState = false; 
+
     async function init() {
       try {
         const response = await fetch(API_URL);
@@ -267,7 +303,7 @@
       document.getElementById('view-' + id).classList.add('active');
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
       if(id === 'home' || id === 'words') updateHomeStats();
-      const tabId = (['ready','flash','write','quiz'].includes(id)) ? 'home' : id;
+      const tabId = (['ready','flash','write','quiz','listen'].includes(id)) ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
 
@@ -280,7 +316,6 @@
       }
     }
 
-    // 일괄 즐겨찾기 설정/해제 함수
     function bulkFavorite(status) {
       let listToChange = [];
       if (selectedDays.includes('all')) {
@@ -316,13 +351,15 @@
         if(!filteredWords.length) return alert("단어가 없습니다.");
         filteredWords.sort(() => Math.random() - 0.5);
         curIdx = 0; quizStats.right = 0;
+        
         if(type === 'flash') startFlash();
         else if(type === 'write') startWrite();
-        else startQuiz();
+        else if(type === 'quiz') startQuiz();
+        else if(type === 'listen') startListen(); // 듣기 평가 분기 추가
       };
     }
 
-    /* 주관식 로직 */
+    /* ====== 주관식 로직 ====== */
     function startWrite() { isWrongState = false; switchView('write'); updateWrite(); }
     function updateWrite() {
       const w = filteredWords[curIdx];
@@ -374,7 +411,7 @@
       }
     }
 
-    /* 사지선다 로직 */
+    /* ====== 사지선다 로직 ====== */
     function startQuiz() { switchView('quiz'); updateQuiz(); }
     function updateQuiz() {
       hasAnsweredCurrent = false;
@@ -396,7 +433,7 @@
       } else { btn.classList.add('wrong'); hasAnsweredCurrent = true; }
     }
 
-    /* 플래시카드 로직 */
+    /* ====== 플래시카드 로직 ====== */
     function startFlash() { switchView('flash'); curIdx = 0; flipped = false; updateFlash(); }
     function updateFlash() {
       const w = filteredWords[curIdx];
@@ -411,7 +448,102 @@
     function nextCard() { if(curIdx < filteredWords.length - 1) { curIdx++; flipped = false; updateFlash(); } else { switchView('home'); } }
     function prevCard() { if(curIdx > 0) { curIdx--; flipped = false; updateFlash(); } }
 
-function renderWordList() {
+    /* ====== 듣기 평가 로직 (새로 추가) ====== */
+    function startListen() { 
+      switchView('listen'); 
+      updateListen(); 
+    }
+
+    function updateListen() {
+      l_isWrongState = false;
+      document.getElementById('l-cur').textContent = curIdx + 1;
+      document.getElementById('l-total').textContent = filteredWords.length;
+      document.getElementById('l-right').textContent = quizStats.right;
+      
+      // 1단계 받아쓰기로 화면 초기화
+      document.getElementById('l-phase1').style.display = 'block';
+      document.getElementById('l-phase2').style.display = 'none';
+      
+      document.getElementById('l-input').value = '';
+      document.getElementById('l-input').disabled = false;
+      document.getElementById('l-input').focus();
+      document.getElementById('l-result-msg').innerHTML = '';
+      
+      playListenAudio(); // 렌더링 시 자동으로 한 번 들려줌
+    }
+
+    function playListenAudio() {
+      speak(filteredWords[curIdx].word);
+    }
+
+    function checkListenWrite() {
+      const input = document.getElementById('l-input').value.trim().toLowerCase();
+      const answer = filteredWords[curIdx].word.toLowerCase();
+      const msgArea = document.getElementById('l-result-msg');
+
+      if(input === answer) {
+        msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b><br><span style="font-size:12px; opacity:0.8;">의미 맞추기로 넘어갑니다...</span>`;
+        document.getElementById('l-input').disabled = true;
+        document.getElementById('l-input').blur();
+        
+        // 정답을 맞추면 0.8초 후 4지선다 퀴즈(2단계)로 이동
+        setTimeout(() => { transitionToListenQuiz(); }, 800);
+      } else {
+        l_isWrongState = true;
+        // 틀렸을 경우 정답을 알려주고 똑같이 치게 유도 (기존 방식 차용)
+        msgArea.innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b><br><span style="font-size:12px; opacity:0.8;">위 단어를 똑같이 적어주세요!</span>`;
+        document.getElementById('l-input').value = '';
+        document.getElementById('l-input').focus();
+        playListenAudio(); // 틀렸으니 다시 한 번 들려줌
+      }
+    }
+
+    function transitionToListenQuiz() {
+      document.getElementById('l-phase1').style.display = 'none';
+      document.getElementById('l-phase2').style.display = 'block';
+      
+      const t = filteredWords[curIdx];
+      document.getElementById('l-word').textContent = t.word; // 맞춘 스펠링 표시
+      
+      // 4지선다 보기 생성
+      let opts = [t.meaning, ...appData.words.filter(w=>w.meaning!==t.meaning).sort(()=>Math.random()-0.5).slice(0,3).map(w=>w.meaning)].sort(()=>Math.random()-0.5);
+      document.getElementById('l-options').innerHTML = opts.map(o => `<div class="quiz-option" onclick="checkListenQuiz('${o}', this)">${o}</div>`).join('');
+    }
+
+    function checkListenQuiz(o, btn) {
+      if(o === filteredWords[curIdx].meaning) {
+        btn.classList.add('correct');
+        quizStats.right++; // 듣고 스펠링 적기 + 뜻까지 완전히 맞췄을 때 1점 증가
+        document.getElementById('l-right').textContent = quizStats.right;
+        document.querySelectorAll('#l-options .quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
+        
+        setTimeout(() => { 
+          if(curIdx < filteredWords.length - 1) { 
+            curIdx++; 
+            updateListen(); 
+          } else { 
+            alert("완료!"); 
+            switchView('home'); 
+          } 
+        }, 800);
+      } else { 
+        btn.classList.add('wrong'); 
+      }
+    }
+
+    function prevListen() {
+      if (curIdx > 0) { curIdx--; updateListen(); }
+      else { alert("첫 번째 단어입니다."); }
+    }
+
+    function nextListen() {
+      if (curIdx < filteredWords.length - 1) { curIdx++; updateListen(); }
+      else { alert("마지막 단어입니다."); }
+    }
+
+    /* ================================== */
+
+    function renderWordList() {
       let list = [];
       if (selectedDays.includes('all')) {
         list = appData.words;
@@ -444,9 +576,10 @@ function renderWordList() {
 
     function speak(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.8; window.speechSynthesis.speak(u); }
     window.onload = init;
+    
+    // 엔터키 입력 바인딩
     document.getElementById('w-input').addEventListener('keypress', e => { if(e.key==='Enter') checkWrite(); });
+    document.getElementById('l-input').addEventListener('keypress', e => { if(e.key==='Enter') checkListenWrite(); }); // 듣기 평가 인풋 엔터키
   </script>
 </body>
 </html>
-
-

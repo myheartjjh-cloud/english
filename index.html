@@ -31,7 +31,7 @@
     .btn { border: none; background: var(--surface2); padding: 16px; border-radius: var(--radius2); font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--text); cursor: pointer; width: 100%; margin-bottom: 12px; font-size: 16px; transition: opacity 0.2s; }
     .btn:active { opacity: 0.7; } .btn.primary { background: linear-gradient(135deg, var(--primary), var(--primary2)); color: white; }
     
-    select, input[type="text"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; }
+    select, input[type="text"], input[type="number"] { width: 100%; padding: 14px; border-radius: 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-bottom: 15px; font-size: 18px; text-align: center; appearance: none; -webkit-appearance: none; }
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
@@ -88,17 +88,25 @@
               <div class="stat-item"><div class="stat-label">🏁 전체단어</div><div class="stat-value" id="dash-total">0</div></div>
               <div class="stat-item"><div class="stat-label">🔥 학습률</div><div class="stat-value" id="dash-progress">0%</div></div>
             </div>
-            <button class="btn primary" style="background: linear-gradient(135deg, #ff8c00, #ff0080);" onclick="prepareStudy('listen')">🎧 듣기 평가 (받아쓰기+퀴즈)</button>
-            <button class="btn" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
-            <button class="btn" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
-            <button class="btn" onclick="prepareStudy('flash')">⚡ 플래시카드</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #FF8C00, #FFA500);" onclick="prepareStudy('listen')">🎧 듣기 평가 (받아쓰기+퀴즈)</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #6A11CB, #2575FC);" onclick="prepareStudy('test')">📝 랜덤 단어 시험</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #11998E, #38EF7D);" onclick="prepareStudy('write')">✍️ 단어 쓰기 (주관식)</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #4FACFE, #00F2FE);" onclick="prepareStudy('quiz')">✅ 사지선다 퀴즈</button>
+            <button class="btn primary" style="background: linear-gradient(135deg, #F093FB, #F5576C);" onclick="prepareStudy('flash')">⚡ 플래시카드</button>
           </div>
         </section>
 
         <section class="view" id="view-ready">
           <div class="card">
             <div style="font-size:18px; font-weight:800; margin-bottom:16px;">학습 범위 선택</div>
-            <select id="ready-day-select"></select>
+            <select id="ready-day-select" style="margin-bottom: 5px;"></select>
+            <div id="ready-count-display" style="font-size:13px; color:var(--primary2); text-align:center; margin-bottom:15px; font-weight:600;">(현재 선택된 단어: 0개)</div>
+            
+            <div id="ready-test-count-container" style="display:none; margin-bottom: 15px;">
+              <div style="font-size:14px; color:var(--muted); margin-bottom:8px; text-align:center;">시험 단어 수 (숫자 입력)</div>
+              <input type="number" id="ready-test-count" placeholder="미입력시 랜덤 50%" min="1">
+            </div>
+
             <button id="start-btn" class="btn primary">학습 시작하기</button>
             <button class="btn" onclick="switchView('home')">취소</button>
           </div>
@@ -187,7 +195,7 @@
             <div class="dashboard-6">
               <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="q-cur">0</div></div>
               <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="q-total">0</div></div>
-              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="q-right" style="color:#22c55e">0</div></div>
+              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="w-right" style="color:#22c55e">0</div></div>
             </div>
             <div id="q-word" class="display-word"></div>
             <div id="q-options" class="quiz-options-grid"></div>
@@ -355,19 +363,55 @@
     }
 
     function prepareStudy(type) {
+      const countContainer = document.getElementById('ready-test-count-container');
+      const countInput = document.getElementById('ready-test-count');
+      const countDisplay = document.getElementById('ready-count-display');
+      const daySelect = document.getElementById('ready-day-select');
+      
+      const updateReadyCount = () => {
+        const filter = daySelect.value;
+        let count = 0;
+        if(filter === 'all') count = appData.words.length;
+        else if(filter === 'fav') count = appData.words.filter(w => w.favorite).length;
+        else count = appData.words.filter(w => w.day == filter).length;
+        countDisplay.textContent = `(현재 선택된 단어: ${count}개)`;
+      };
+
+      if(type === 'test') {
+        countContainer.style.display = 'block';
+        countInput.value = ''; 
+      } else {
+        countContainer.style.display = 'none';
+      }
+
+      daySelect.onchange = updateReadyCount;
+      updateReadyCount();
+
       switchView('ready');
       document.getElementById('start-btn').onclick = () => {
-        const filter = document.getElementById('ready-day-select').value;
+        const filter = daySelect.value;
         if(filter === 'all') filteredWords = [...appData.words];
         else if(filter === 'fav') filteredWords = appData.words.filter(w => w.favorite);
         else filteredWords = appData.words.filter(w => w.day == filter);
         
         if(!filteredWords.length) return alert("단어가 없습니다.");
+        
+        // 랜덤 셔플
         filteredWords.sort(() => Math.random() - 0.5);
+        
+        // 시험 모드인 경우 사용자 입력값만큼 선택
+        if(type === 'test') {
+          let testCount = parseInt(countInput.value);
+          if(isNaN(testCount) || testCount <= 0) {
+            testCount = Math.ceil(filteredWords.length * 0.5); // 입력 없으면 기본 50%
+          }
+          filteredWords = filteredWords.slice(0, testCount);
+        }
+
         curIdx = 0; quizStats.right = 0;
         
         if(type === 'flash') startFlash();
-        else if(type === 'write') startWrite();
+        else if(type === 'write' || type === 'test') startWrite(); 
         else if(type === 'quiz') startQuiz();
         else if(type === 'listen') startListen(); 
       };

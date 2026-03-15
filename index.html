@@ -35,7 +35,7 @@
     .display-word { font-size: 32px; font-weight: 900; text-align: center; padding: 15px 0; color: var(--primary2); min-height: 80px; display: flex; align-items: center; justify-content: center; }
     
     .tabbar { position: fixed; bottom: 0; left: 0; right: 0; height: var(--tabbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: center; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-    .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(2, 1fr); }
+    .tabbar-inner { width: 100%; max-width: var(--maxw); display: grid; grid-template-columns: repeat(3, 1fr); }
     .tab { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .tab[aria-selected="true"] { color: var(--primary2); 
       background: rgba(45, 212, 255, 0.15); 
@@ -70,6 +70,26 @@
 
     .fav-bulk-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .btn-sm { padding: 8px; font-size: 13px; margin-bottom: 0; border: 1px solid var(--border); }
+
+    /* 통계 스타일 */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .stats-card { background: var(--surface2); padding: 16px; border-radius: var(--radius2); border: 1px solid var(--border); }
+    .stats-title { font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+    .stats-value-lg { font-size: 24px; font-weight: 900; color: var(--primary2); }
+    .history-item { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .history-type { font-weight: 800; font-size: 15px; }
+    .history-date { font-size: 12px; color: var(--muted); }
+    .history-score { font-weight: 700; color: var(--primary2); }
+    .progress-bar-bg { width: 100%; height: 8px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--primary2); transition: width 0.3s; }
+
+    /* 오답노트 전용 스타일 */
+    .wrong-item { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255, 77, 79, 0.05); }
+    .wrong-word { font-weight: 800; color: #ff4d4f; font-size: 16px; }
+    .wrong-meaning { font-size: 13px; color: var(--muted); }
+    .wrong-btn-group { display: flex; gap: 8px; }
+    .btn-circle { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--surface2); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; }
+    .btn-delete { color: #ff4d4f; }
   </style>
 </head>
 <body>
@@ -195,13 +215,13 @@
             <div class="dashboard-6">
               <div class="stat-item"><div class="stat-label">📍 현재</div><div class="stat-value" id="q-cur">0</div></div>
               <div class="stat-item"><div class="stat-label">🏁 전체</div><div class="stat-value" id="q-total">0</div></div>
-              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="w-right" style="color:#22c55e">0</div></div>
-            </div>
-            <div id="q-word" class="display-word"></div>
-            <div id="q-options" class="quiz-options-grid"></div>
-            <button class="btn" onclick="switchView('home')" style="margin-top:20px;">학습 종료</button>
-          </div>
-        </section>
+              <div class="stat-item"><div class="stat-label">⭕ 맞음</div><div class="stat-value" id="q-right" style="color:#22c55e">0</div></div>
+              </div>
+              <div id="q-word" class="display-word"></div>
+              <div id="q-options" class="quiz-options-grid"></div>
+              <button class="btn" onclick="switchView('home')" style="margin-top:20px;">학습 종료</button>
+              </div>
+              </section>
 
         <section class="view" id="view-words">
           <div class="card">
@@ -221,12 +241,44 @@
           </div>
         </section>
 
+        <section class="view" id="view-stats">
+          <div class="card">
+            <div style="font-size:20px; font-weight:900; margin-bottom:12px;">📊 학습 통계</div>
+            <div class="stats-grid">
+              <div class="stats-card">
+                <div class="stats-title">평균 정답률</div>
+                <div class="stats-value-lg" id="stat-avg-accuracy">0%</div>
+                <div class="progress-bar-bg"><div id="stat-avg-bar" class="progress-bar-fill" style="width:0%"></div></div>
+              </div>
+              <div class="stats-card">
+                <div class="stats-title">총 학습 횟수</div>
+                <div class="stats-value-lg" id="stat-total-sessions">0</div>
+              </div>
+            </div>
+
+            <div style="font-size:16px; font-weight:800; margin: 15px 0 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span>🚨 오답노트</span>
+              <button onclick="clearWrongNote()" style="background: none; border: none; color: #ff4d4f; font-size: 12px; font-weight: 700; cursor: pointer;">전체 비우기</button>
+            </div>
+            <div id="wrong-note-container" style="background: var(--surface2); border-radius: var(--radius2); border: 1px solid var(--border); overflow: hidden; margin-bottom: 25px; max-height: 300px; overflow-y: auto;">
+              <div style="padding:40px; text-align:center; color:var(--muted);">틀린 단어가 없습니다.</div>
+            </div>
+
+            <div style="font-size:16px; font-weight:800; margin: 15px 0 10px;">🕒 최근 학습 히스토리</div>
+            <div id="history-container" style="background: var(--surface2); border-radius: var(--radius2); border: 1px solid var(--border); overflow: hidden;">
+              <div style="padding:40px; text-align:center; color:var(--muted);">히스토리가 없습니다.</div>
+            </div>
+            <button class="btn" onclick="clearHistory()" style="margin-top:20px; color:#ff4d4f; font-size:14px;">히스토리 전체 삭제</button>
+          </div>
+        </section>
+
       </div>
     </main>
     <nav class="tabbar">
       <div class="tabbar-inner">
         <button class="tab" id="tab-home" aria-selected="true" onclick="switchView('home')">🏠<span>홈</span></button>
         <button class="tab" id="tab-words" onclick="switchView('words')">📖<span>단어장</span></button>
+        <button class="tab" id="tab-stats" onclick="switchView('stats')">📊<span>통계</span></button>
       </div>
     </nav>
   </div>
@@ -243,6 +295,7 @@
     let hasAnsweredCurrent = false;
     let isWrongState = false;
     let l_isWrongState = false; 
+    let currentStudyType = '';
 
     // 현재 즐겨찾기 상태를 기기(localStorage)에 저장하는 함수
     function saveFavsToLocal() {
@@ -323,6 +376,7 @@
       document.getElementById('view-' + id).classList.add('active');
       document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', 'false'));
       if(id === 'home' || id === 'words') updateHomeStats();
+      if(id === 'stats') renderStats();
       const tabId = (['ready','flash','write','quiz','listen'].includes(id)) ? 'home' : id;
       document.getElementById('tab-' + tabId).setAttribute('aria-selected', 'true');
     }
@@ -363,6 +417,7 @@
     }
 
     function prepareStudy(type) {
+      currentStudyType = type;
       const countContainer = document.getElementById('ready-test-count-container');
       const countInput = document.getElementById('ready-test-count');
       const countDisplay = document.getElementById('ready-count-display');
@@ -439,7 +494,7 @@
 
     function nextWrite() {
       if (curIdx < filteredWords.length - 1) { curIdx++; isWrongState = false; updateWrite(); }
-      else { alert("마지막 단어입니다."); }
+      else { finishSession(); }
     }
 
     function checkWrite() {
@@ -454,7 +509,11 @@
       }
 
       if(input === answer) {
-        if(!isWrongState) { quizStats.right++; msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; }
+        if(!isWrongState) { 
+          quizStats.right++; 
+          document.getElementById('w-right').textContent = quizStats.right;
+          msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; 
+        }
         else { msgArea.innerHTML = `<b style="color:#2dd4ff">확인되었습니다!</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; }
         speak(filteredWords[curIdx].word);
         document.getElementById('w-input').disabled = true;
@@ -462,6 +521,7 @@
         btn.textContent = "다음 문제로 ▶";
       } else {
         isWrongState = true;
+        addWrongWord(filteredWords[curIdx]); // 오답노트 추가
         msgArea.innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b><br><span style="font-size:12px; opacity:0.8;">위 단어를 똑같이 입력하세요!</span>`;
         document.getElementById('w-input').value = '';
         document.getElementById('w-input').focus();
@@ -485,10 +545,17 @@
     function checkQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct');
-        if (!hasAnsweredCurrent) quizStats.right++;
+        if (!hasAnsweredCurrent) {
+          quizStats.right++;
+          document.getElementById('q-right').textContent = quizStats.right;
+        }
         document.querySelectorAll('.quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
-        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { alert("완료!"); switchView('home'); } }, 800);
-      } else { btn.classList.add('wrong'); hasAnsweredCurrent = true; }
+        setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { finishSession(); } }, 800);
+      } else { 
+        btn.classList.add('wrong'); 
+        if (!hasAnsweredCurrent) addWrongWord(filteredWords[curIdx]); // 오답노트 추가
+        hasAnsweredCurrent = true; 
+      }
     }
 
     /* ====== 플래시카드 로직 ====== */
@@ -546,6 +613,7 @@
         setTimeout(() => { transitionToListenQuiz(); }, 800);
       } else {
         l_isWrongState = true;
+        addWrongWord(filteredWords[curIdx]); // 오답노트 추가
         msgArea.innerHTML = `❌ 정답: <b style="color:#ff4d4f">${filteredWords[curIdx].word}</b><br><span style="font-size:12px; opacity:0.8;">위 단어를 똑같이 적어주세요!</span>`;
         document.getElementById('l-input').value = '';
         document.getElementById('l-input').focus();
@@ -567,8 +635,10 @@
     function checkListenQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct');
-        quizStats.right++;
-        document.getElementById('l-right').textContent = quizStats.right;
+        if (!l_isWrongState) {
+          quizStats.right++;
+          document.getElementById('l-right').textContent = quizStats.right;
+        }
         document.querySelectorAll('#l-options .quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
         
         setTimeout(() => { 
@@ -576,12 +646,13 @@
             curIdx++; 
             updateListen(); 
           } else { 
-            alert("완료!"); 
-            switchView('home'); 
+            finishSession();
           } 
         }, 800);
       } else { 
         btn.classList.add('wrong'); 
+        if(!l_isWrongState) addWrongWord(filteredWords[curIdx]); // 오답노트 추가
+        l_isWrongState = true;
       }
     }
 
@@ -593,6 +664,113 @@
     function nextListen() {
       if (curIdx < filteredWords.length - 1) { curIdx++; updateListen(); }
       else { alert("마지막 단어입니다."); }
+    }
+
+    /* ====== 통계 및 히스토리 ====== */
+    function finishSession() {
+      saveSession(currentStudyType, filteredWords.length, quizStats.right);
+      alert(`완료! (${filteredWords.length}문제 중 ${quizStats.right}문제 정답)`);
+      switchView('home');
+    }
+
+    function saveSession(type, total, right) {
+      const history = JSON.parse(localStorage.getItem('studyHistory') || '[]');
+      const typeMap = { 'listen': '🎧 듣기', 'test': '📝 시험', 'write': '✍️ 쓰기', 'quiz': '✅ 퀴즈' };
+      const newEntry = {
+        date: new Date().toISOString(),
+        type: typeMap[type] || type,
+        total: total,
+        right: right,
+        accuracy: Math.round((right / total) * 100)
+      };
+      history.unshift(newEntry);
+      localStorage.setItem('studyHistory', JSON.stringify(history.slice(0, 50))); // 최대 50개 저장
+    }
+
+    function addWrongWord(wordObj) {
+      let wrongNote = JSON.parse(localStorage.getItem('wrongNote') || '[]');
+      // 중복 체크 (id 기준)
+      if(!wrongNote.some(w => w.id === wordObj.id)) {
+        wrongNote.unshift({
+          id: wordObj.id,
+          word: wordObj.word,
+          meaning: wordObj.meaning,
+          date: new Date().toISOString()
+        });
+        localStorage.setItem('wrongNote', JSON.stringify(wrongNote));
+      }
+    }
+
+    function deleteWrongWord(id) {
+      let wrongNote = JSON.parse(localStorage.getItem('wrongNote') || '[]');
+      wrongNote = wrongNote.filter(w => w.id !== id);
+      localStorage.setItem('wrongNote', JSON.stringify(wrongNote));
+      renderStats();
+    }
+
+    function clearWrongNote() {
+      if(confirm("오답노트를 모두 비우시겠습니까?")) {
+        localStorage.removeItem('wrongNote');
+        renderStats();
+      }
+    }
+
+    function renderStats() {
+      // 1. 학습 히스토리 렌더링
+      const history = JSON.parse(localStorage.getItem('studyHistory') || '[]');
+      const totalSessions = history.length;
+      document.getElementById('stat-total-sessions').textContent = totalSessions;
+
+      if (totalSessions > 0) {
+        const avgAccuracy = Math.round(history.reduce((acc, cur) => acc + cur.accuracy, 0) / totalSessions);
+        document.getElementById('stat-avg-accuracy').textContent = avgAccuracy + "%";
+        document.getElementById('stat-avg-bar').style.width = avgAccuracy + "%";
+
+        const historyHtml = history.map(h => {
+          const d = new Date(h.date);
+          const dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+          return `
+            <div class="history-item">
+              <div>
+                <div class="history-type">${h.type}</div>
+                <div class="history-date">${dateStr}</div>
+              </div>
+              <div class="history-score">${h.accuracy}% (${h.right}/${h.total})</div>
+            </div>`;
+        }).join('');
+        document.getElementById('history-container').innerHTML = historyHtml;
+      } else {
+        document.getElementById('stat-avg-accuracy').textContent = "0%";
+        document.getElementById('stat-avg-bar').style.width = "0%";
+        document.getElementById('history-container').innerHTML = '<div style="padding:40px; text-align:center; color:var(--muted);">히스토리가 없습니다.</div>';
+      }
+
+      // 2. 오답노트 렌더링
+      const wrongNote = JSON.parse(localStorage.getItem('wrongNote') || '[]');
+      if(wrongNote.length > 0) {
+        const wrongHtml = wrongNote.map(w => `
+          <div class="wrong-item">
+            <div>
+              <div class="wrong-word">${w.word}</div>
+              <div class="wrong-meaning">${w.meaning}</div>
+            </div>
+            <div class="wrong-btn-group">
+              <button class="btn-circle" onclick="speak('${w.word}')">🔊</button>
+              <button class="btn-circle btn-delete" onclick="deleteWrongWord('${w.id}')">✕</button>
+            </div>
+          </div>
+        `).join('');
+        document.getElementById('wrong-note-container').innerHTML = wrongHtml;
+      } else {
+        document.getElementById('wrong-note-container').innerHTML = '<div style="padding:40px; text-align:center; color:var(--muted);">틀린 단어가 없습니다.</div>';
+      }
+    }
+
+    function clearHistory() {
+      if(confirm("모든 히스토리를 삭제하시겠습니까?")) {
+        localStorage.removeItem('studyHistory');
+        renderStats();
+      }
     }
 
     /* ================================== */

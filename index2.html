@@ -396,7 +396,11 @@
       }
 
       if(input === answer) {
-        if(!isWrongState) { quizStats.right++; msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; }
+        if(!isWrongState) { 
+          quizStats.right++; 
+          document.getElementById('w-right').textContent = quizStats.right;
+          msgArea.innerHTML = `<b style="color:#22c55e">정답입니다! ✨</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; 
+        }
         else { msgArea.innerHTML = `<b style="color:#2dd4ff">확인되었습니다!</b><br><span style="font-size:12px; opacity:0.8;">[정답 확인]을 눌러 다음으로 이동</span>`; }
         speak(filteredWords[curIdx].word);
         document.getElementById('w-input').disabled = true;
@@ -427,7 +431,10 @@
     function checkQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct');
-        if (!hasAnsweredCurrent) quizStats.right++;
+        if (!hasAnsweredCurrent) {
+          quizStats.right++;
+          document.getElementById('q-right').textContent = quizStats.right;
+        }
         document.querySelectorAll('.quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
         setTimeout(() => { if(curIdx < filteredWords.length - 1) { curIdx++; updateQuiz(); } else { alert("완료!"); switchView('home'); } }, 800);
       } else { btn.classList.add('wrong'); hasAnsweredCurrent = true; }
@@ -513,8 +520,10 @@
     function checkListenQuiz(o, btn) {
       if(o === filteredWords[curIdx].meaning) {
         btn.classList.add('correct');
-        quizStats.right++; // 듣고 스펠링 적기 + 뜻까지 완전히 맞췄을 때 1점 증가
-        document.getElementById('l-right').textContent = quizStats.right;
+        if (!l_isWrongState) {
+          quizStats.right++; 
+          document.getElementById('l-right').textContent = quizStats.right;
+        }
         document.querySelectorAll('#l-options .quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
         
         setTimeout(() => { 
@@ -528,6 +537,7 @@
         }, 800);
       } else { 
         btn.classList.add('wrong'); 
+        l_isWrongState = true;
       }
     }
 
